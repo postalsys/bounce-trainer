@@ -1,13 +1,17 @@
 import { Router } from "express";
+import express from "express";
 import { resolve } from "path";
 import { existsSync } from "fs";
-import { classify, initialize, getLabels } from "@postalsys/bounce-classifier";
+import rateLimit from "express-rate-limit";
+import { classify, initialize } from "@postalsys/bounce-classifier";
 import requireAuth from "../middleware/require-auth.js";
 import { anonymizeMessage } from "../lib/anonymize.js";
 import db from "../db.js";
 import config from "../config.js";
 
 const router = Router();
+
+const MAX_MESSAGE_LENGTH = 10000;
 
 const VALID_LABELS = [
   "auth_failure",
@@ -28,18 +32,40 @@ const VALID_LABELS = [
   "virus_detected",
 ];
 
+// Per-endpoint rate limits
+const classifyLimit = rateLimit({ windowMs: 60_000, max: 30, message: { error: "Too many requests" } });
+const proposalLimit = rateLimit({ windowMs: 60_000, max: 10, message: { error: "Too many submissions" } });
+const bulkLimit = rateLimit({ windowMs: 60_000, max: 3, message: { error: "Too many bulk uploads" } });
+
+// Larger body parser for bulk CSV only
+const bulkBodyParser = express.json({ limit: "2mb" });
+
+// Filter classify response to only safe fields
+function safeClassifyResult(result) {
+  return {
+    label: result.label,
+    confidence: result.confidence,
+    action: result.action,
+    scores: result.scores,
+    usedFallback: result.usedFallback || undefined,
+    retryAfter: result.retryAfter || undefined,
+    blocklist: result.blocklist || undefined,
+  };
+}
+
 // Classify a message (no auth required)
-router.post("/api/classify", async (req, res) => {
+router.post("/api/classify", classifyLimit, async (req, res) => {
   const { message } = req.body;
   if (!message || typeof message !== "string" || !message.trim()) {
     return res.status(400).json({ error: "Message is required" });
   }
   try {
     await initialize();
-    const result = await classify(message.trim());
-    res.json(result);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+    const truncated = message.trim().slice(0, MAX_MESSAGE_LENGTH);
+    const result = await classify(truncated);
+    res.json(safeClassifyResult(result));
+  } catch {
+    res.status(500).json({ error: "Classification failed" });
   }
 });
 
@@ -49,7 +75,7 @@ router.get("/api/labels", (req, res) => {
 });
 
 // Submit a proposal (requires auth)
-router.post("/api/proposals", requireAuth, async (req, res) => {
+router.post("/api/proposals", proposalLimit, requireAuth, async (req, res) => {
   const { message, label } = req.body;
 
   if (!message || typeof message !== "string" || !message.trim()) {
@@ -58,14 +84,13 @@ router.post("/api/proposals", requireAuth, async (req, res) => {
   if (!label || !VALID_LABELS.includes(label)) {
     return res
       .status(400)
-      .json({ error: `Invalid label. Must be one of: ${VALID_LABELS.join(", ")}` });
+      .json({ error: "Invalid label" });
   }
 
   try {
-    // Anonymize the message before storing
-    const anonymized = anonymizeMessage(message.trim());
+    const truncated = message.trim().slice(0, MAX_MESSAGE_LENGTH);
+    const anonymized = anonymizeMessage(truncated);
 
-    // Classify with current model
     await initialize();
     const classification = await classify(anonymized);
 
@@ -90,13 +115,13 @@ router.post("/api/proposals", requireAuth, async (req, res) => {
       model_label: classification.label,
       model_confidence: classification.confidence,
     });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+  } catch {
+    res.status(500).json({ error: "Failed to submit proposal" });
   }
 });
 
 // Bulk upload proposals from CSV (requires auth)
-router.post("/api/proposals/bulk-csv", requireAuth, async (req, res) => {
+router.post("/api/proposals/bulk-csv", bulkLimit, requireAuth, bulkBodyParser, async (req, res) => {
   const { csv } = req.body;
 
   if (!csv || typeof csv !== "string" || !csv.trim()) {
@@ -104,7 +129,6 @@ router.post("/api/proposals/bulk-csv", requireAuth, async (req, res) => {
   }
 
   // Parse CSV handling quoted fields (RFC 4180)
-  // Quoted fields may contain commas, newlines, and escaped quotes ("")
   const records = [];
   let pos = 0;
   const text = csv.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
@@ -112,7 +136,7 @@ router.post("/api/proposals/bulk-csv", requireAuth, async (req, res) => {
   function parseField() {
     if (pos >= text.length) return "";
     if (text[pos] === '"') {
-      pos++; // skip opening quote
+      pos++;
       let val = "";
       while (pos < text.length) {
         if (text[pos] === '"') {
@@ -120,7 +144,7 @@ router.post("/api/proposals/bulk-csv", requireAuth, async (req, res) => {
             val += '"';
             pos += 2;
           } else {
-            pos++; // skip closing quote
+            pos++;
             break;
           }
         } else {
@@ -150,7 +174,6 @@ router.post("/api/proposals/bulk-csv", requireAuth, async (req, res) => {
     return res.status(400).json({ error: "CSV must have a header row and at least one data row" });
   }
 
-  // Validate header
   const [h1, h2] = records[0].map((h) => h.toLowerCase());
   if (h1 !== "label" || h2 !== "message") {
     return res.status(400).json({
@@ -158,19 +181,19 @@ router.post("/api/proposals/bulk-csv", requireAuth, async (req, res) => {
     });
   }
 
-  // Validate rows
   const rows = [];
   const errors = [];
   for (let i = 1; i < records.length; i++) {
-    const [rawLabel, message] = records[i];
+    const [rawLabel, rawMessage] = records[i];
     const label = rawLabel.toLowerCase();
+    const message = rawMessage.slice(0, MAX_MESSAGE_LENGTH);
 
     if (!message) {
       errors.push({ row: i + 1, error: "Empty message" });
       continue;
     }
     if (!VALID_LABELS.includes(label)) {
-      errors.push({ row: i + 1, error: `Invalid label "${rawLabel}"` });
+      errors.push({ row: i + 1, error: "Invalid label" });
       continue;
     }
 
@@ -184,7 +207,6 @@ router.post("/api/proposals/bulk-csv", requireAuth, async (req, res) => {
     });
   }
 
-  // Cap at 500 rows per upload
   if (rows.length > 500) {
     return res.status(400).json({
       error: `Too many rows (${rows.length}). Maximum 500 per upload.`,
@@ -194,7 +216,6 @@ router.post("/api/proposals/bulk-csv", requireAuth, async (req, res) => {
   try {
     await initialize();
 
-    // Anonymize and classify each row
     const prepared = [];
     for (const { label, message } of rows) {
       const anonymized = anonymizeMessage(message);
@@ -207,7 +228,6 @@ router.post("/api/proposals/bulk-csv", requireAuth, async (req, res) => {
       });
     }
 
-    // Insert all in a single transaction
     const stmt = db.prepare(`
       INSERT INTO proposals (github_username, github_id, message_text, proposed_label, model_label, model_confidence)
       VALUES (?, ?, ?, ?, ?, ?)
@@ -232,8 +252,8 @@ router.post("/api/proposals/bulk-csv", requireAuth, async (req, res) => {
       inserted: prepared.length,
       errors: errors.length > 0 ? errors : undefined,
     });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+  } catch {
+    res.status(500).json({ error: "Failed to process bulk upload" });
   }
 });
 

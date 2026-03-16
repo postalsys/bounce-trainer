@@ -1,6 +1,8 @@
 import express from "express";
 import session from "express-session";
 import connectSqlite3 from "connect-sqlite3";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
 import { dirname, resolve } from "path";
 import { fileURLToPath } from "url";
 
@@ -19,18 +21,43 @@ const SQLiteStore = connectSqlite3(session);
 
 const app = express();
 
+// Security headers
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'"],
+        styleSrc: ["'self'"],
+        imgSrc: ["'self'", "data:"],
+        fontSrc: ["'self'"],
+        connectSrc: ["'self'"],
+      },
+    },
+  }),
+);
+
 // View engine
 app.set("view engine", "ejs");
 app.set("views", resolve(__dirname, "views"));
 
-// Body parsing
-app.use(express.json({ limit: "2mb" }));
+// Body parsing - small limit by default, bulk endpoint overrides
+app.use(express.json({ limit: "16kb" }));
 app.use(express.urlencoded({ extended: false }));
+
+// Global rate limit
+app.use(rateLimit({ windowMs: 60_000, max: 120 }));
 
 // Static files
 app.use(express.static(resolve(__dirname, "public")));
-app.use("/vendor/bootstrap", express.static(resolve(__dirname, "node_modules/bootstrap/dist")));
-app.use("/vendor/bootstrap-icons", express.static(resolve(__dirname, "node_modules/bootstrap-icons/font")));
+app.use(
+  "/vendor/bootstrap",
+  express.static(resolve(__dirname, "node_modules/bootstrap/dist")),
+);
+app.use(
+  "/vendor/bootstrap-icons",
+  express.static(resolve(__dirname, "node_modules/bootstrap-icons/font")),
+);
 
 // Sessions
 app.use(
@@ -65,7 +92,7 @@ app.use(adminApiRoutes);
 app.listen(config.port, () => {
   console.log(`bounce-trainer running at ${config.baseUrl}`);
   if (config.adminUsers.length) {
-    console.log(`Admin users: ${config.adminUsers.join(", ")}`);
+    console.log(`Admin users configured: ${config.adminUsers.length}`);
   }
   if (!config.github.clientId) {
     console.log(

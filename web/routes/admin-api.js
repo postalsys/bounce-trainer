@@ -8,6 +8,13 @@ import config from "../config.js";
 
 const router = Router();
 
+const VALID_LABELS = [
+  "auth_failure", "domain_blacklisted", "geo_blocked", "greylisting",
+  "invalid_address", "ip_blacklisted", "mailbox_disabled", "mailbox_full",
+  "policy_blocked", "rate_limited", "relay_denied", "server_error",
+  "spam_blocked", "unknown", "user_unknown", "virus_detected",
+];
+
 // Track retrain status in memory
 let retrainStatus = { running: false, lastLog: "", lastRun: null };
 
@@ -45,6 +52,16 @@ router.patch("/admin/api/proposals/:id", requireAdmin, (req, res) => {
     return res.status(400).json({ error: "Status must be approved or rejected" });
   }
 
+  // Validate label if provided
+  if (label && !VALID_LABELS.includes(label)) {
+    return res.status(400).json({ error: "Invalid label" });
+  }
+
+  // Limit notes length
+  if (notes && notes.length > 1000) {
+    return res.status(400).json({ error: "Notes too long (max 1000 chars)" });
+  }
+
   const proposal = db.prepare("SELECT * FROM proposals WHERE id = ?").get(id);
   if (!proposal) {
     return res.status(404).json({ error: "Proposal not found" });
@@ -57,7 +74,6 @@ router.patch("/admin/api/proposals/:id", requireAdmin, (req, res) => {
     reviewed_at: new Date().toISOString(),
   };
 
-  // Allow changing label when approving
   if (label && status === "approved") {
     updates.proposed_label = label;
   }
@@ -131,7 +147,7 @@ router.post("/admin/api/export", requireAdmin, (req, res) => {
     markExported(ids);
   }
 
-  res.json({ ok: true, count: rows.length, path: outputPath });
+  res.json({ ok: true, count: rows.length });
 });
 
 // Trigger retrain
@@ -143,7 +159,13 @@ router.post("/admin/api/retrain", requireAdmin, (req, res) => {
   retrainStatus = { running: true, lastLog: "", lastRun: new Date().toISOString() };
 
   const scriptPath = resolve(config.projectRoot, "pipeline", "retrain.sh");
-  const env = { ...process.env };
+
+  // Minimal environment for child process
+  const env = {
+    PATH: process.env.PATH,
+    HOME: process.env.HOME,
+    LANG: process.env.LANG || "en_US.UTF-8",
+  };
   if (config.privateBaselinePath) {
     env.PRIVATE_BASELINE_PATH = config.privateBaselinePath;
   }

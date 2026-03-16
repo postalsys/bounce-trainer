@@ -21,7 +21,9 @@
     "connect-sqlite3": "^0.9.15",
     "ejs": "^3.1.10",
     "express": "^5.0.0",
+    "express-rate-limit": "^8.3.1",
     "express-session": "^1.18.1",
+    "helmet": "^8.1.0",
     "passport": "^0.7.0",
     "passport-github2": "^0.1.12"
   },

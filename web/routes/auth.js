@@ -3,7 +3,7 @@ import passport from "../auth.js";
 
 const router = Router();
 
-router.get("/auth/github", passport.authenticate("github", { scope: [] }));
+router.get("/auth/github", passport.authenticate("github", { scope: [], state: true }));
 
 router.get(
   "/auth/github/callback",

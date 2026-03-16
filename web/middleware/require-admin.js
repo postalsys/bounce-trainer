@@ -1,3 +1,5 @@
+import config from "../config.js";
+
 export default function requireAdmin(req, res, next) {
   if (!req.isAuthenticated()) {
     if (req.path.startsWith("/api/")) {
@@ -5,7 +7,11 @@ export default function requireAdmin(req, res, next) {
     }
     return res.redirect("/auth/github");
   }
-  if (!req.user.isAdmin) {
+  // Recheck admin status from config on every request (not cached in session)
+  const isCurrentlyAdmin = config.adminUsers.includes(
+    req.user.username.toLowerCase(),
+  );
+  if (!isCurrentlyAdmin) {
     if (req.path.startsWith("/api/")) {
       return res.status(403).json({ error: "Admin access required" });
     }

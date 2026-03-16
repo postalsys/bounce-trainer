@@ -55,17 +55,17 @@ async function loadProposals() {
     <tr>
       <td><input class="form-check-input row-checkbox" type="checkbox" value="${p.id}" /></td>
       <td class="font-monospace small text-break" style="max-width:24rem" title="${escapeHtml(p.message_text)}">${escapeHtml(truncate(p.message_text, 120))}</td>
-      <td><span class="badge text-bg-primary">${p.proposed_label}</span></td>
-      <td class="small">${p.model_label || "-"}</td>
+      <td><span class="badge text-bg-primary">${escapeHtml(p.proposed_label)}</span></td>
+      <td class="small">${escapeHtml(p.model_label || "-")}</td>
       <td class="small">${p.model_confidence ? (p.model_confidence * 100).toFixed(0) + "%" : "-"}</td>
-      <td class="small">${p.github_username}</td>
+      <td class="small">${escapeHtml(p.github_username)}</td>
       <td>
         ${currentStatus === "pending" ? `
           <div class="d-flex gap-1">
             <button class="btn btn-sm btn-success" onclick="patchProposal(${p.id}, 'approved')" title="Approve"><i class="bi bi-check-lg"></i></button>
             <button class="btn btn-sm btn-outline-danger" onclick="patchProposal(${p.id}, 'rejected')" title="Reject"><i class="bi bi-x-lg"></i></button>
           </div>
-        ` : `<span class="badge ${p.status === "approved" ? "text-bg-success" : "text-bg-danger"}">${p.status}</span>`}
+        ` : `<span class="badge ${p.status === "approved" ? "text-bg-success" : "text-bg-danger"}">${escapeHtml(p.status)}</span>`}
       </td>
     </tr>
   `,

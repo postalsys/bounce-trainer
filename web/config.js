@@ -32,7 +32,14 @@ const config = {
     clientSecret: process.env.GITHUB_CLIENT_SECRET || "",
   },
 
-  sessionSecret: process.env.SESSION_SECRET || "dev-secret-change-me",
+  sessionSecret: (() => {
+    const s = process.env.SESSION_SECRET;
+    if (!s || s === "change-me-to-random-string") {
+      console.error("FATAL: SESSION_SECRET must be set to a secure random value");
+      process.exit(1);
+    }
+    return s;
+  })(),
 
   adminUsers: (process.env.ADMIN_USERS || "")
     .split(",")
