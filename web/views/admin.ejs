@@ -1,0 +1,41 @@
+<%- include('header', { title: 'Admin', user }) %>
+
+<h1>Admin Panel</h1>
+
+<div class="stats-bar" id="stats-bar"></div>
+
+<div class="tabs">
+  <button class="tab active" data-status="pending">Pending</button>
+  <button class="tab" data-status="approved">Approved</button>
+  <button class="tab" data-status="rejected">Rejected</button>
+</div>
+
+<div class="admin-actions">
+  <button id="bulk-approve-btn" class="btn btn-small btn-primary" disabled>Approve Selected</button>
+  <button id="bulk-reject-btn" class="btn btn-small btn-danger" disabled>Reject Selected</button>
+  <button id="export-btn" class="btn btn-small btn-secondary">Export to JSONL</button>
+  <button id="retrain-btn" class="btn btn-small btn-secondary">Retrain Model</button>
+</div>
+
+<div id="retrain-status" class="alert alert-info" style="display:none"></div>
+
+<table class="proposals-table">
+  <thead>
+    <tr>
+      <th><input type="checkbox" id="select-all" /></th>
+      <th>Message</th>
+      <th>Proposed</th>
+      <th>Model Says</th>
+      <th>Confidence</th>
+      <th>Submitted By</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody id="proposals-body"></tbody>
+</table>
+
+<div class="pagination" id="pagination"></div>
+
+<script src="/admin.js"></script>
+
+<%- include('footer') %>

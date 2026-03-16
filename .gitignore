@@ -1,0 +1,13 @@
+node_modules/
+web/data/*.db
+web/data/*.db-journal
+web/data/*.db-wal
+web/data/*.db-shm
+!web/data/.gitkeep
+pipeline/output/
+pipeline/venv/
+__pycache__/
+*.pyc
+.env
+.DS_Store
+*.log

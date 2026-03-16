@@ -1,0 +1,29 @@
+{
+  "name": "bounce-trainer",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Web interface for crowdsourcing SMTP bounce classification training data",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "test": "node --test test/*.test.js",
+    "format": "prettier --write ."
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "@postalsys/bounce-classifier": "^2.0.0",
+    "better-sqlite3": "^11.0.0",
+    "connect-sqlite3": "^0.9.15",
+    "ejs": "^3.1.10",
+    "express": "^5.0.0",
+    "express-session": "^1.18.1",
+    "passport": "^0.7.0",
+    "passport-github2": "^0.1.12"
+  },
+  "devDependencies": {
+    "prettier": "^3.7.0"
+  }
+}
