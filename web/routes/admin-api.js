@@ -5,6 +5,7 @@ import { spawn } from "child_process";
 import requireAdmin from "../middleware/require-admin.js";
 import db from "../db.js";
 import config from "../config.js";
+import { reloadClassifier } from "./api.js";
 
 const router = Router();
 
@@ -199,9 +200,17 @@ router.post("/admin/api/retrain", requireAdmin, (req, res) => {
     retrainStatus.lastLog = log;
   });
 
-  child.on("close", (code) => {
+  child.on("close", async (code) => {
     retrainStatus.running = false;
     retrainStatus.lastLog = log + `\nProcess exited with code ${code}`;
+    if (code === 0) {
+      try {
+        await reloadClassifier();
+        retrainStatus.lastLog += "\nClassifier model reloaded.";
+      } catch (err) {
+        retrainStatus.lastLog += `\nFailed to reload classifier: ${err.message}`;
+      }
+    }
   });
 
   res.json({ ok: true, message: "Retrain started" });

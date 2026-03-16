@@ -23,6 +23,18 @@ function formatLabel(value) {
   return value.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+// Show model source badge
+fetch("/api/model/info")
+  .then((r) => r.json())
+  .then((data) => {
+    const el = document.getElementById("model-badge");
+    if (el && data.modelSource) {
+      const isRetrained = data.modelSource === "retrained";
+      el.innerHTML = `<span class="badge ${isRetrained ? "text-bg-success" : "text-bg-secondary"}">${isRetrained ? "Retrained model" : "Bundled model"}</span>`;
+    }
+  })
+  .catch(() => {});
+
 // Label descriptions keyed by value
 const labelDescriptions = {};
 
@@ -92,6 +104,10 @@ function displayResult(result) {
       </span>
     </div>
     ${result.usedFallback ? '<div class="d-flex justify-content-between border-bottom py-2 small"><span class="text-body-secondary">Note</span><span class="text-warning fw-medium">Used fallback rules</span></div>' : ""}
+    <div class="d-flex justify-content-between border-bottom py-2 small">
+      <span class="text-body-secondary">Model</span>
+      <span class="fw-medium">${result.modelSource === "retrained" ? '<span class="text-success">Retrained</span>' : "Bundled"}</span>
+    </div>
 
     <div class="row row-cols-2 g-1 mt-2">
       ${sortedScores.map(([label, score]) => `<div class="col"><div class="d-flex justify-content-between px-2 py-1 rounded small ${label === result.label ? "bg-success-subtle fw-medium" : "bg-body-secondary bg-opacity-10"}""><span>${label.replace(/_/g, " ")}</span><span class="text-body-secondary">${(score * 100).toFixed(1)}%</span></div></div>`).join("")}

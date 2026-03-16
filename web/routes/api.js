@@ -2,13 +2,16 @@ import { Router } from "express";
 import express from "express";
 import { resolve } from "path";
 import rateLimit from "express-rate-limit";
-import { classify, initialize } from "@postalsys/bounce-classifier";
+import { classify, initialize, reload } from "@postalsys/bounce-classifier";
 import requireAuth from "../middleware/require-auth.js";
 import { anonymizeMessage } from "../lib/anonymize.js";
 import db from "../db.js";
 import config from "../config.js";
 
 const router = Router();
+
+// Track which model is active
+let modelSource = "bundled";
 
 const MAX_MESSAGE_LENGTH = 10000;
 
@@ -90,6 +93,30 @@ Usage
 More information: https://github.com/postalsys/bounce-classifier
 `;
 
+// Initialize classifier with custom model path if configured
+async function ensureInitialized() {
+  const modelPath = config.bounceClassifierModelPath;
+  if (modelPath) {
+    // Use the retrained model from the configured path
+    await initialize({ modelPath });
+    modelSource = "retrained";
+  } else {
+    await initialize();
+  }
+}
+
+/**
+ * Reload the classifier model after retraining.
+ * Called by admin-api.js when retrain completes successfully.
+ */
+export async function reloadClassifier() {
+  const modelPath = config.bounceClassifierModelPath;
+  if (modelPath) {
+    await reload({ modelPath });
+    modelSource = "retrained";
+  }
+}
+
 // Per-endpoint rate limits
 const classifyLimit = rateLimit({ windowMs: 60_000, max: 30, message: { error: "Too many requests" } });
 const proposalLimit = rateLimit({ windowMs: 60_000, max: 10, message: { error: "Too many submissions" } });
@@ -118,13 +145,18 @@ router.post("/api/classify", classifyLimit, async (req, res) => {
     return res.status(400).json({ error: "Message is required" });
   }
   try {
-    await initialize();
+    await ensureInitialized();
     const truncated = message.trim().slice(0, MAX_MESSAGE_LENGTH);
     const result = await classify(truncated);
-    res.json(safeClassifyResult(result));
+    res.json({ ...safeClassifyResult(result), modelSource });
   } catch {
     res.status(500).json({ error: "Classification failed" });
   }
+});
+
+// Model info (public)
+router.get("/api/model/info", (req, res) => {
+  res.json({ modelSource });
 });
 
 // Get available labels
@@ -154,7 +186,7 @@ router.post("/api/proposals", proposalLimit, requireAuth, async (req, res) => {
     const truncated = message.trim().slice(0, MAX_MESSAGE_LENGTH);
     const anonymized = anonymizeMessage(truncated);
 
-    await initialize();
+    await ensureInitialized();
     const classification = await classify(anonymized);
 
     const stmt = db.prepare(`
@@ -277,7 +309,7 @@ router.post("/api/proposals/bulk-csv", bulkLimit, requireAuth, bulkBodyParser, a
   }
 
   try {
-    await initialize();
+    await ensureInitialized();
 
     const prepared = [];
     for (const { label, message } of rows) {
