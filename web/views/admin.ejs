@@ -1,40 +1,58 @@
 <%- include('header', { title: 'Admin', user }) %>
 
-<h1>Admin Panel</h1>
+<h1 class="h3 mb-3">Admin Panel</h1>
 
-<div class="stats-bar" id="stats-bar"></div>
+<div id="stats-bar" class="d-flex gap-3 mb-3 small"></div>
 
-<div class="tabs">
-  <button class="tab active" data-status="pending">Pending</button>
-  <button class="tab" data-status="approved">Approved</button>
-  <button class="tab" data-status="rejected">Rejected</button>
+<ul class="nav nav-tabs mb-3">
+  <li class="nav-item">
+    <button class="nav-link active" data-status="pending">Pending</button>
+  </li>
+  <li class="nav-item">
+    <button class="nav-link" data-status="approved">Approved</button>
+  </li>
+  <li class="nav-item">
+    <button class="nav-link" data-status="rejected">Rejected</button>
+  </li>
+</ul>
+
+<div class="d-flex gap-2 flex-wrap mb-3">
+  <button id="bulk-approve-btn" class="btn btn-sm btn-success" disabled>
+    <i class="bi bi-check-lg"></i> Approve Selected
+  </button>
+  <button id="bulk-reject-btn" class="btn btn-sm btn-danger" disabled>
+    <i class="bi bi-x-lg"></i> Reject Selected
+  </button>
+  <button id="export-btn" class="btn btn-sm btn-outline-secondary">
+    <i class="bi bi-download"></i> Export to JSONL
+  </button>
+  <button id="retrain-btn" class="btn btn-sm btn-outline-secondary">
+    <i class="bi bi-arrow-repeat"></i> Retrain Model
+  </button>
 </div>
 
-<div class="admin-actions">
-  <button id="bulk-approve-btn" class="btn btn-small btn-primary" disabled>Approve Selected</button>
-  <button id="bulk-reject-btn" class="btn btn-small btn-danger" disabled>Reject Selected</button>
-  <button id="export-btn" class="btn btn-small btn-secondary">Export to JSONL</button>
-  <button id="retrain-btn" class="btn btn-small btn-secondary">Retrain Model</button>
+<div id="retrain-status" class="alert alert-info d-none" role="alert"></div>
+
+<div class="table-responsive">
+  <table class="table table-hover table-sm align-middle">
+    <thead class="table-light">
+      <tr>
+        <th style="width:2rem"><input class="form-check-input" type="checkbox" id="select-all" /></th>
+        <th>Message</th>
+        <th>Proposed</th>
+        <th>Model Says</th>
+        <th>Conf.</th>
+        <th>Submitted By</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody id="proposals-body"></tbody>
+  </table>
 </div>
 
-<div id="retrain-status" class="alert alert-info" style="display:none"></div>
-
-<table class="proposals-table">
-  <thead>
-    <tr>
-      <th><input type="checkbox" id="select-all" /></th>
-      <th>Message</th>
-      <th>Proposed</th>
-      <th>Model Says</th>
-      <th>Confidence</th>
-      <th>Submitted By</th>
-      <th>Actions</th>
-    </tr>
-  </thead>
-  <tbody id="proposals-body"></tbody>
-</table>
-
-<div class="pagination" id="pagination"></div>
+<nav id="pagination-nav" aria-label="Proposals pagination">
+  <ul class="pagination pagination-sm justify-content-center" id="pagination"></ul>
+</nav>
 
 <script src="/admin.js"></script>
 

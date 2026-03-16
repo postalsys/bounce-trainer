@@ -29,6 +29,8 @@ app.use(express.urlencoded({ extended: false }));
 
 // Static files
 app.use(express.static(resolve(__dirname, "public")));
+app.use("/vendor/bootstrap", express.static(resolve(__dirname, "node_modules/bootstrap/dist")));
+app.use("/vendor/bootstrap-icons", express.static(resolve(__dirname, "node_modules/bootstrap-icons/font")));
 
 // Sessions
 app.use(

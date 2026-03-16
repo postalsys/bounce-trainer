@@ -29,11 +29,11 @@ function updateBulkButtons() {
 async function loadStats() {
   const res = await fetch("/admin/api/stats");
   const data = await res.json();
-  const counts = data.statusCounts;
+  const c = data.statusCounts;
   statsBar.innerHTML = `
-    <span class="stat-item"><strong>${counts.pending || 0}</strong> pending</span>
-    <span class="stat-item"><strong>${counts.approved || 0}</strong> approved</span>
-    <span class="stat-item"><strong>${counts.rejected || 0}</strong> rejected</span>
+    <span><strong>${c.pending || 0}</strong> <span class="text-body-secondary">pending</span></span>
+    <span><strong>${c.approved || 0}</strong> <span class="text-body-secondary">approved</span></span>
+    <span><strong>${c.rejected || 0}</strong> <span class="text-body-secondary">rejected</span></span>
   `;
 }
 
@@ -44,7 +44,7 @@ async function loadProposals() {
   const data = await res.json();
 
   if (data.proposals.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:#6b7280;padding:2rem">No ${currentStatus} proposals</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" class="text-center text-body-secondary py-4">No ${currentStatus} proposals</td></tr>`;
     paginationEl.innerHTML = "";
     return;
   }
@@ -53,31 +53,31 @@ async function loadProposals() {
     .map(
       (p) => `
     <tr>
-      <td><input type="checkbox" class="row-checkbox" value="${p.id}" /></td>
-      <td class="msg-cell" title="${escapeHtml(p.message_text)}">${escapeHtml(truncate(p.message_text, 120))}</td>
-      <td><span class="label-badge badge-blue" style="font-size:0.75rem;padding:0.125rem 0.5rem">${p.proposed_label}</span></td>
-      <td>${p.model_label || "-"}</td>
-      <td>${p.model_confidence ? (p.model_confidence * 100).toFixed(0) + "%" : "-"}</td>
-      <td>${p.github_username}</td>
-      <td class="action-btns">
+      <td><input class="form-check-input row-checkbox" type="checkbox" value="${p.id}" /></td>
+      <td class="font-monospace small text-break" style="max-width:24rem" title="${escapeHtml(p.message_text)}">${escapeHtml(truncate(p.message_text, 120))}</td>
+      <td><span class="badge text-bg-primary">${p.proposed_label}</span></td>
+      <td class="small">${p.model_label || "-"}</td>
+      <td class="small">${p.model_confidence ? (p.model_confidence * 100).toFixed(0) + "%" : "-"}</td>
+      <td class="small">${p.github_username}</td>
+      <td>
         ${currentStatus === "pending" ? `
-          <button class="btn btn-small btn-primary" onclick="patchProposal(${p.id}, 'approved')">Approve</button>
-          <button class="btn btn-small btn-danger" onclick="patchProposal(${p.id}, 'rejected')">Reject</button>
-        ` : `<span style="color:#6b7280;font-size:0.75rem">${p.status}</span>`}
+          <div class="d-flex gap-1">
+            <button class="btn btn-sm btn-success" onclick="patchProposal(${p.id}, 'approved')" title="Approve"><i class="bi bi-check-lg"></i></button>
+            <button class="btn btn-sm btn-outline-danger" onclick="patchProposal(${p.id}, 'rejected')" title="Reject"><i class="bi bi-x-lg"></i></button>
+          </div>
+        ` : `<span class="badge ${p.status === "approved" ? "text-bg-success" : "text-bg-danger"}">${p.status}</span>`}
       </td>
     </tr>
   `,
     )
     .join("");
 
-  // Pagination
   const totalPages = Math.ceil(data.total / limit);
   if (totalPages > 1) {
-    let html = "";
-    for (let i = 1; i <= totalPages; i++) {
-      html += `<button class="page-btn${i === currentPage ? " active" : ""}" onclick="goToPage(${i})">${i}</button>`;
-    }
-    paginationEl.innerHTML = html;
+    paginationEl.innerHTML = Array.from({ length: totalPages }, (_, i) => {
+      const page = i + 1;
+      return `<li class="page-item${page === currentPage ? " active" : ""}"><button class="page-link" onclick="goToPage(${page})">${page}</button></li>`;
+    }).join("");
   } else {
     paginationEl.innerHTML = "";
   }
@@ -97,9 +97,9 @@ function truncate(str, len) {
 }
 
 // Tab switching
-document.querySelectorAll(".tab").forEach((tab) => {
+document.querySelectorAll(".nav-link[data-status]").forEach((tab) => {
   tab.addEventListener("click", () => {
-    document.querySelectorAll(".tab").forEach((t) => t.classList.remove("active"));
+    document.querySelectorAll(".nav-link[data-status]").forEach((t) => t.classList.remove("active"));
     tab.classList.add("active");
     currentStatus = tab.dataset.status;
     currentPage = 1;
@@ -115,7 +115,6 @@ selectAllCheckbox.addEventListener("change", () => {
   updateBulkButtons();
 });
 
-// Delegate checkbox changes
 tbody.addEventListener("change", (e) => {
   if (e.target.classList.contains("row-checkbox")) {
     updateBulkButtons();
@@ -157,7 +156,7 @@ bulkRejectBtn.addEventListener("click", () => bulkAction("rejected"));
 // Export
 exportBtn.addEventListener("click", async () => {
   exportBtn.disabled = true;
-  exportBtn.textContent = "Exporting...";
+  exportBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Exporting...';
   try {
     const res = await fetch("/admin/api/export", { method: "POST" });
     const data = await res.json();
@@ -167,7 +166,7 @@ exportBtn.addEventListener("click", async () => {
     alert("Export failed: " + err.message);
   } finally {
     exportBtn.disabled = false;
-    exportBtn.textContent = "Export to JSONL";
+    exportBtn.innerHTML = '<i class="bi bi-download"></i> Export to JSONL';
   }
 });
 
@@ -180,7 +179,7 @@ retrainBtn.addEventListener("click", async () => {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error);
     retrainStatusEl.textContent = "Retrain started...";
-    retrainStatusEl.style.display = "block";
+    retrainStatusEl.classList.remove("d-none");
     pollRetrainStatus();
   } catch (err) {
     alert("Retrain failed: " + err.message);
@@ -191,10 +190,10 @@ retrainBtn.addEventListener("click", async () => {
 async function pollRetrainStatus() {
   const res = await fetch("/admin/api/retrain/status");
   const data = await res.json();
-  retrainStatusEl.textContent = data.running
-    ? "Retrain in progress...\n" + (data.lastLog || "").slice(-500)
-    : "Retrain complete.\n" + (data.lastLog || "").slice(-500);
-  retrainStatusEl.style.whiteSpace = "pre-wrap";
+  const logTail = (data.lastLog || "").slice(-500);
+  retrainStatusEl.innerHTML = data.running
+    ? `<div class="fw-medium mb-1"><span class="spinner-border spinner-border-sm"></span> Retrain in progress...</div><pre class="mb-0 small">${escapeHtml(logTail)}</pre>`
+    : `<div class="fw-medium mb-1"><i class="bi bi-check-circle"></i> Retrain complete</div><pre class="mb-0 small">${escapeHtml(logTail)}</pre>`;
   if (data.running) {
     setTimeout(pollRetrainStatus, 3000);
   } else {

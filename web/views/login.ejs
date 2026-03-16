@@ -1,9 +1,17 @@
 <%- include('header', { title: 'Login', user }) %>
 
-<div class="login-box">
-  <h1>Login Required</h1>
-  <p>Sign in with your GitHub account to submit bounce message proposals.</p>
-  <a href="/auth/github" class="btn btn-primary">Login with GitHub</a>
+<div class="row justify-content-center mt-5">
+  <div class="col-md-6 col-lg-4">
+    <div class="card text-center">
+      <div class="card-body py-5">
+        <h1 class="card-title h4 mb-3">Login Required</h1>
+        <p class="text-body-secondary mb-4">Sign in with your GitHub account to submit bounce message proposals.</p>
+        <a href="/auth/github" class="btn btn-dark">
+          <i class="bi bi-github"></i> Login with GitHub
+        </a>
+      </div>
+    </div>
+  </div>
 </div>
 
 <%- include('footer') %>

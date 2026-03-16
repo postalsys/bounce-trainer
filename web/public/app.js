@@ -1,12 +1,12 @@
 /* Client-side JS for the submission page */
 
 const ACTION_STYLES = {
-  remove: "badge-red",
-  retry: "badge-yellow",
-  retry_different_ip: "badge-orange",
-  fix_configuration: "badge-purple",
-  review: "badge-blue",
-  remove_content: "badge-pink",
+  remove: "text-bg-danger",
+  retry: "text-bg-warning",
+  retry_different_ip: "text-bg-info",
+  fix_configuration: "text-bg-primary",
+  review: "text-bg-secondary",
+  remove_content: "text-bg-danger",
 };
 
 const messageEl = document.getElementById("message");
@@ -39,45 +39,49 @@ if (labelSelect && submitBtn) {
 
 function showError(msg) {
   statusEl.textContent = msg;
-  statusEl.style.display = "block";
-  successEl.style.display = "none";
+  statusEl.classList.remove("d-none");
+  successEl.classList.add("d-none");
 }
 
 function showSuccess(msg) {
   successEl.textContent = msg;
-  successEl.style.display = "block";
-  statusEl.style.display = "none";
+  successEl.classList.remove("d-none");
+  statusEl.classList.add("d-none");
 }
 
 function hideAlerts() {
-  statusEl.style.display = "none";
-  successEl.style.display = "none";
+  statusEl.classList.add("d-none");
+  successEl.classList.add("d-none");
 }
 
 function displayResult(result) {
   const pct = (result.confidence * 100).toFixed(1);
   const sortedScores = Object.entries(result.scores).sort((a, b) => b[1] - a[1]);
-  const actionStyle = ACTION_STYLES[result.action] || "badge-gray";
+  const actionStyle = ACTION_STYLES[result.action] || "text-bg-secondary";
 
   resultContentEl.innerHTML = `
-    <div class="label-badge ${actionStyle}">${result.label.replace(/_/g, " ")}</div>
-    <div class="info-row">
-      <span class="info-label">Action</span>
-      <span class="info-value">${result.action.replace(/_/g, " ")}</span>
+    <span class="badge rounded-pill ${actionStyle} fs-6 mb-3">${result.label.replace(/_/g, " ")}</span>
+
+    <div class="d-flex justify-content-between border-bottom py-2 small">
+      <span class="text-body-secondary">Action</span>
+      <span class="fw-medium">${result.action.replace(/_/g, " ")}</span>
     </div>
-    <div class="info-row">
-      <span class="info-label">Confidence</span>
-      <span class="info-value">
-        <span class="confidence-bar"><span class="confidence-fill" style="width:${pct}%"></span></span>
-        ${pct}%
+    <div class="d-flex justify-content-between border-bottom py-2 small">
+      <span class="text-body-secondary">Confidence</span>
+      <span class="d-flex align-items-center gap-2">
+        <div class="progress" style="width:6rem;height:0.5rem">
+          <div class="progress-bar bg-success" style="width:${pct}%"></div>
+        </div>
+        <span class="fw-medium">${pct}%</span>
       </span>
     </div>
-    ${result.usedFallback ? '<div class="info-row"><span class="info-label">Note</span><span class="info-value" style="color:#d97706">Used fallback rules</span></div>' : ""}
-    <div class="scores-grid">
-      ${sortedScores.map(([label, score]) => `<div class="score-item${label === result.label ? " highlight" : ""}"><span>${label.replace(/_/g, " ")}</span><span>${(score * 100).toFixed(1)}%</span></div>`).join("")}
+    ${result.usedFallback ? '<div class="d-flex justify-content-between border-bottom py-2 small"><span class="text-body-secondary">Note</span><span class="text-warning fw-medium">Used fallback rules</span></div>' : ""}
+
+    <div class="row row-cols-2 g-1 mt-2">
+      ${sortedScores.map(([label, score]) => `<div class="col"><div class="d-flex justify-content-between px-2 py-1 rounded small ${label === result.label ? "bg-success-subtle fw-medium" : "bg-body-secondary bg-opacity-10"}""><span>${label.replace(/_/g, " ")}</span><span class="text-body-secondary">${(score * 100).toFixed(1)}%</span></div></div>`).join("")}
     </div>
   `;
-  resultEl.style.display = "block";
+  resultEl.classList.remove("d-none");
 }
 
 // Classify button
@@ -86,7 +90,7 @@ classifyBtn.addEventListener("click", async () => {
   if (!message) return;
   hideAlerts();
   classifyBtn.disabled = true;
-  classifyBtn.textContent = "Classifying...";
+  classifyBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Classifying...';
   try {
     const res = await fetch("/api/classify", {
       method: "POST",
@@ -96,7 +100,6 @@ classifyBtn.addEventListener("click", async () => {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error);
     displayResult(data);
-    // Auto-select the model's label
     if (data.label && labelSelect) {
       labelSelect.value = data.label;
       if (submitBtn) submitBtn.disabled = false;
@@ -105,7 +108,7 @@ classifyBtn.addEventListener("click", async () => {
     showError(err.message);
   } finally {
     classifyBtn.disabled = false;
-    classifyBtn.textContent = "Test Classification";
+    classifyBtn.innerHTML = '<i class="bi bi-search"></i> Test Classification';
   }
 });
 
@@ -117,7 +120,7 @@ if (submitBtn) {
     if (!message || !label) return;
     hideAlerts();
     submitBtn.disabled = true;
-    submitBtn.textContent = "Submitting...";
+    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Submitting...';
     try {
       const res = await fetch("/api/proposals", {
         method: "POST",
@@ -132,12 +135,12 @@ if (submitBtn) {
       );
       messageEl.value = "";
       labelSelect.value = "";
-      resultEl.style.display = "none";
+      resultEl.classList.add("d-none");
     } catch (err) {
       showError(err.message);
     } finally {
       submitBtn.disabled = false;
-      submitBtn.textContent = "Submit Proposal";
+      submitBtn.innerHTML = '<i class="bi bi-send"></i> Submit Proposal';
     }
   });
 }

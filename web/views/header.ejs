@@ -1,26 +1,28 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-bs-theme="light">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title><%= typeof title !== 'undefined' ? title + ' - ' : '' %>Bounce Trainer</title>
+    <link rel="stylesheet" href="/vendor/bootstrap/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="/vendor/bootstrap-icons/bootstrap-icons.min.css" />
     <link rel="stylesheet" href="/style.css" />
   </head>
   <body>
-    <nav class="navbar">
-      <div class="container nav-inner">
-        <a href="/" class="nav-brand">Bounce Trainer</a>
-        <div class="nav-links">
+    <nav class="navbar navbar-expand-sm bg-body-tertiary border-bottom mb-4">
+      <div class="container">
+        <a class="navbar-brand fw-bold" href="/">Bounce Trainer</a>
+        <div class="d-flex align-items-center gap-3">
           <% if (user) { %>
             <% if (user.isAdmin) { %>
-              <a href="/admin">Admin</a>
+              <a class="nav-link px-0" href="/admin"><i class="bi bi-shield-lock"></i> Admin</a>
             <% } %>
-            <span class="nav-user"><%= user.username %></span>
-            <a href="/auth/logout">Logout</a>
+            <span class="text-body-secondary small"><%= user.username %></span>
+            <a class="nav-link px-0" href="/auth/logout"><i class="bi bi-box-arrow-right"></i> Logout</a>
           <% } else { %>
-            <a href="/auth/github">Login with GitHub</a>
+            <a class="btn btn-dark btn-sm" href="/auth/github"><i class="bi bi-github"></i> Login with GitHub</a>
           <% } %>
         </div>
       </div>
     </nav>
-    <div class="container main">
+    <div class="container">
