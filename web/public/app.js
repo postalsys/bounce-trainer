@@ -18,14 +18,23 @@ const statusEl = document.getElementById("status");
 const successEl = document.getElementById("success");
 const labelSelect = document.getElementById("label-select");
 
+// Human-readable label name: "auth_failure" -> "Auth Failure"
+function formatLabel(value) {
+  return value.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+// Label descriptions keyed by value
+const labelDescriptions = {};
+
 // Load labels into dropdown
 fetch("/api/labels")
   .then((r) => r.json())
   .then((labels) => {
-    for (const label of labels) {
+    for (const { value, description } of labels) {
+      labelDescriptions[value] = description;
       const opt = document.createElement("option");
-      opt.value = label;
-      opt.textContent = label.replace(/_/g, " ");
+      opt.value = value;
+      opt.textContent = `${formatLabel(value)} \u2014 ${description}`;
       labelSelect.appendChild(opt);
     }
   });
@@ -59,8 +68,15 @@ function displayResult(result) {
   const sortedScores = Object.entries(result.scores).sort((a, b) => b[1] - a[1]);
   const actionStyle = ACTION_STYLES[result.action] || "text-bg-secondary";
 
+  const labelName = formatLabel(result.label);
+  const labelDesc = labelDescriptions[result.label] || "";
+
   resultContentEl.innerHTML = `
-    <span class="badge rounded-pill ${actionStyle} fs-6 mb-3">${result.label.replace(/_/g, " ")}</span>
+    <div class="mb-3">
+      <span class="badge rounded-pill ${actionStyle} fs-6">${result.label}</span>
+      <span class="ms-2">${labelName}</span>
+      ${labelDesc ? `<span class="text-body-secondary small ms-1">&mdash; ${labelDesc}</span>` : ""}
+    </div>
 
     <div class="d-flex justify-content-between border-bottom py-2 small">
       <span class="text-body-secondary">Action</span>

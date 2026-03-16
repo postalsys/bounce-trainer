@@ -13,24 +13,26 @@ const router = Router();
 
 const MAX_MESSAGE_LENGTH = 10000;
 
-const VALID_LABELS = [
-  "auth_failure",
-  "domain_blacklisted",
-  "geo_blocked",
-  "greylisting",
-  "invalid_address",
-  "ip_blacklisted",
-  "mailbox_disabled",
-  "mailbox_full",
-  "policy_blocked",
-  "rate_limited",
-  "relay_denied",
-  "server_error",
-  "spam_blocked",
-  "unknown",
-  "user_unknown",
-  "virus_detected",
-];
+const LABEL_INFO = {
+  auth_failure: "Authentication or validation failure (SPF/DKIM/DMARC)",
+  domain_blacklisted: "Sender domain is on a blocklist",
+  geo_blocked: "Blocked due to geographic origin restrictions",
+  greylisting: "Temporary deferral, retry later",
+  invalid_address: "Malformed or syntactically invalid address",
+  ip_blacklisted: "Sender IP is on a blocklist",
+  mailbox_disabled: "Mailbox exists but is disabled or suspended",
+  mailbox_full: "Mailbox exceeded its storage quota",
+  policy_blocked: "Rejected by recipient server policy or content filter",
+  rate_limited: "Too many connections or messages, try later",
+  relay_denied: "Server does not relay mail for this domain",
+  server_error: "Temporary internal error on recipient server",
+  spam_blocked: "Classified as spam by content filter",
+  unknown: "Bounce reason could not be determined",
+  user_unknown: "Recipient email address does not exist",
+  virus_detected: "Contains a virus, malware, or prohibited attachment",
+};
+
+const VALID_LABELS = Object.keys(LABEL_INFO);
 
 // Per-endpoint rate limits
 const classifyLimit = rateLimit({ windowMs: 60_000, max: 30, message: { error: "Too many requests" } });
@@ -71,7 +73,12 @@ router.post("/api/classify", classifyLimit, async (req, res) => {
 
 // Get available labels
 router.get("/api/labels", (req, res) => {
-  res.json(VALID_LABELS);
+  res.json(
+    VALID_LABELS.map((value) => ({
+      value,
+      description: LABEL_INFO[value],
+    })),
+  );
 });
 
 // Submit a proposal (requires auth)
