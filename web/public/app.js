@@ -23,6 +23,29 @@ function formatLabel(value) {
   return value.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+// Format seconds into human-readable duration
+function formatDuration(seconds) {
+  if (seconds >= 3600) {
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    return m > 0 ? `${h}h ${m}m` : `${h}h`;
+  }
+  if (seconds >= 60) {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return s > 0 ? `${m}m ${s}s` : `${m}m`;
+  }
+  return `${seconds}s`;
+}
+
+// Format blocklist info
+function formatBlocklist(bl) {
+  if (bl.lists) {
+    return bl.lists.map((b) => `${b.name} <span class="text-body-secondary">(${b.type})</span>`).join(", ");
+  }
+  return `${bl.name} <span class="text-body-secondary">(${bl.type})</span>`;
+}
+
 // Show model source badge
 fetch("/api/model/info")
   .then((r) => r.json())
@@ -112,7 +135,9 @@ function displayResult(result) {
         <span class="fw-medium">${pct}%</span>
       </span>
     </div>
-    ${result.usedFallback ? '<div class="d-flex justify-content-between border-bottom py-2 small"><span class="text-body-secondary">Note</span><span class="text-warning fw-medium">Used fallback rules</span></div>' : ""}
+    ${result.retryAfter ? `<div class="d-flex justify-content-between border-bottom py-2 small"><span class="text-body-secondary">Retry after</span><span class="fw-medium">${formatDuration(result.retryAfter)}</span></div>` : ""}
+    ${result.blocklist ? `<div class="d-flex justify-content-between border-bottom py-2 small"><span class="text-body-secondary">Blocklist</span><span class="fw-medium">${formatBlocklist(result.blocklist)}</span></div>` : ""}
+    ${result.usedFallback ? '<div class="d-flex justify-content-between border-bottom py-2 small"><span class="text-body-secondary">Note</span><span class="text-warning fw-medium">Used fallback rules (low ML confidence)</span></div>' : ""}
     <div class="d-flex justify-content-between border-bottom py-2 small">
       <span class="text-body-secondary">Model</span>
       <span class="fw-medium">${result.modelSource === "retrained" ? '<span class="text-success">Retrained</span>' : "Bundled"} <code class="text-body-secondary">${result.modelHash ? result.modelHash.slice(0, 8) : "n/a"}</code></span>
