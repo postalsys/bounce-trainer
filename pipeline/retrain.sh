@@ -6,22 +6,20 @@ cd "$SCRIPT_DIR"
 
 VENV_DIR="$SCRIPT_DIR/venv"
 
-# Create and activate Python venv if needed
+# Ensure venv exists
 if [ ! -d "$VENV_DIR" ]; then
-    echo "Creating Python virtual environment..."
-    python3 -m venv "$VENV_DIR"
-    VENV_NEW=1
-else
-    VENV_NEW=0
+    echo "Python venv not found. Running setup-venv.sh..."
+    bash "$SCRIPT_DIR/setup-venv.sh"
 fi
 
 # shellcheck disable=SC1091
 source "$VENV_DIR/bin/activate"
 
-# Install requirements if venv is new
-if [ "$VENV_NEW" -eq 1 ]; then
-    echo "Installing dependencies from requirements.txt..."
-    pip install -r requirements.txt
+# Quick sanity check
+if ! python -c "import tensorflow" 2>/dev/null; then
+    echo "Dependencies missing. Reinstalling..."
+    bash "$SCRIPT_DIR/setup-venv.sh" --clean
+    source "$VENV_DIR/bin/activate"
 fi
 
 # Create output directory
