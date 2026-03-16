@@ -28,10 +28,18 @@ fetch("/api/model/info")
   .then((r) => r.json())
   .then((data) => {
     const el = document.getElementById("model-badge");
-    if (el && data.modelSource) {
-      const isRetrained = data.modelSource === "retrained";
-      const hash = data.modelHash ? ` (${data.modelHash.slice(0, 8)})` : "";
-      el.innerHTML = `<span class="badge ${isRetrained ? "text-bg-success" : "text-bg-secondary"}">${isRetrained ? "Retrained" : "Bundled"}${hash}</span>`;
+    if (!el) return;
+    const active = data.active;
+    const bundled = data.bundled;
+    const activeHash = active?.modelHash?.slice(0, 8) || "unknown";
+    const bundledHash = bundled?.modelHash?.slice(0, 8) || "unknown";
+    const isCustom = data.modelSource === "retrained";
+    const isSameModel = activeHash === bundledHash;
+
+    if (isCustom && !isSameModel) {
+      el.innerHTML = `<span class="badge text-bg-success">Retrained model <code class="text-white-50">${activeHash}</code></span> <span class="badge text-bg-secondary">Bundled <code class="text-white-50">${bundledHash}</code></span>`;
+    } else {
+      el.innerHTML = `<span class="badge text-bg-secondary">Bundled model <code class="text-white-50">${activeHash}</code></span>`;
     }
   })
   .catch(() => {});
@@ -107,7 +115,7 @@ function displayResult(result) {
     ${result.usedFallback ? '<div class="d-flex justify-content-between border-bottom py-2 small"><span class="text-body-secondary">Note</span><span class="text-warning fw-medium">Used fallback rules</span></div>' : ""}
     <div class="d-flex justify-content-between border-bottom py-2 small">
       <span class="text-body-secondary">Model</span>
-      <span class="fw-medium">${result.modelSource === "retrained" ? '<span class="text-success">Retrained</span>' : "Bundled"}${result.modelHash ? ` <code class="text-body-secondary">${result.modelHash.slice(0, 8)}</code>` : ""}</span>
+      <span class="fw-medium">${result.modelSource === "retrained" ? '<span class="text-success">Retrained</span>' : "Bundled"} <code class="text-body-secondary">${result.modelHash ? result.modelHash.slice(0, 8) : "n/a"}</code></span>
     </div>
 
     <div class="row row-cols-2 g-1 mt-2">

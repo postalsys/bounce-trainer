@@ -1,6 +1,8 @@
 import { Router } from "express";
 import express from "express";
-import { resolve } from "path";
+import { resolve, dirname } from "path";
+import { readFileSync } from "fs";
+import { fileURLToPath } from "url";
 import rateLimit from "express-rate-limit";
 import { classify, initialize, reload, getModelInfo } from "@postalsys/bounce-classifier";
 import requireAuth from "../middleware/require-auth.js";
@@ -12,6 +14,23 @@ const router = Router();
 
 // Track which model is active
 let modelSource = "bundled";
+
+// Load bundled model config for comparison
+const __dirname = dirname(fileURLToPath(import.meta.url));
+let bundledModelInfo = null;
+try {
+  const bundledConfig = JSON.parse(
+    readFileSync(resolve(__dirname, "..", "node_modules", "@postalsys", "bounce-classifier", "model", "config.json"), "utf8"),
+  );
+  bundledModelInfo = {
+    modelHash: bundledConfig.model_hash || null,
+    trainedAt: bundledConfig.trained_at || null,
+    trainingSamples: bundledConfig.training_samples || null,
+    validationAccuracy: bundledConfig.validation_accuracy || null,
+  };
+} catch {
+  // Package may not have config.json with hash
+}
 
 const MAX_MESSAGE_LENGTH = 10000;
 
@@ -157,7 +176,12 @@ router.post("/api/classify", classifyLimit, async (req, res) => {
 
 // Model info (public)
 router.get("/api/model/info", (req, res) => {
-  res.json({ modelSource, ...getModelInfo() });
+  const active = getModelInfo();
+  res.json({
+    modelSource,
+    active: active || bundledModelInfo,
+    bundled: bundledModelInfo,
+  });
 });
 
 // Get available labels
