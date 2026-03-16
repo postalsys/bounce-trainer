@@ -285,9 +285,12 @@ PATTERNS = [
 
 # Patterns to normalize (not remove, just standardize)
 NORMALIZE_PATTERNS = [
-    # SMTP multiline to single line: "550-5.7.40" -> "550 5.7.40"
-    # This handles unwrapped multiline SMTP responses
-    (re.compile(r'^(\d{3})-'), r'\1 '),
+    # SMTP multiline: join continuation lines by stripping repeated codes
+    # "550-first line\n550-second line\n550 third line" -> "550-first line second line third line"
+    (re.compile(r'\r?\n\d{3}[- ]'), ' '),
+
+    # SMTP first-line continuation marker: "550-first line" -> "550 first line"
+    (re.compile(r'^(\d{3})-', re.MULTILINE), r'\1 '),
 
     # Multiple spaces to single space
     (re.compile(r'  +'), ' '),

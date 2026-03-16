@@ -288,7 +288,11 @@ export const PATTERNS = [
 
 /** @type {PatternPair[]} */
 export const NORMALIZE_PATTERNS = [
-  // SMTP multiline to single line: "550-5.7.40" -> "550 5.7.40"
+  // SMTP multiline: join continuation lines by stripping repeated codes
+  // "550-first line\n550-second line\n550 third line" -> "550-first line second line third line"
+  [/\r?\n\d{3}[- ]/g, ' '],
+
+  // SMTP first-line continuation marker: "550-first line" -> "550 first line"
   [/^(\d{3})-/gm, '$1 '],
 
   // Multiple spaces to single space
