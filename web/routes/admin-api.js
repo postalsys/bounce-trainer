@@ -216,9 +216,16 @@ router.get("/admin/api/stats", requireAdmin, (req, res) => {
     )
     .all();
 
+  const pendingTraining = db
+    .prepare(
+      `SELECT COUNT(*) as count FROM proposals WHERE status = 'approved' AND exported_at IS NULL`,
+    )
+    .get().count;
+
   res.json({
     statusCounts: Object.fromEntries(counts.map((r) => [r.status, r.count])),
     labelDistribution: labelDist,
+    pendingTraining,
   });
 });
 

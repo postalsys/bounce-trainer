@@ -16,4 +16,8 @@ router.get("/admin", requireAdmin, (req, res) => {
   res.render("admin", { user: req.user });
 });
 
+router.get("/labels", (req, res) => {
+  res.render("labels", { user: req.user || null });
+});
+
 export default router;

@@ -30,10 +30,12 @@ async function loadStats() {
   const res = await fetch("/admin/api/stats");
   const data = await res.json();
   const c = data.statusCounts;
+  const pendingTraining = data.pendingTraining || 0;
   statsBar.innerHTML = `
     <span><strong>${c.pending || 0}</strong> <span class="text-body-secondary">pending</span></span>
     <span><strong>${c.approved || 0}</strong> <span class="text-body-secondary">approved</span></span>
     <span><strong>${c.rejected || 0}</strong> <span class="text-body-secondary">rejected</span></span>
+    ${pendingTraining > 0 ? `<span class="text-warning-emphasis"><i class="bi bi-exclamation-triangle"></i> <strong>${pendingTraining}</strong> approved but not yet exported</span>` : ""}
   `;
 }
 
