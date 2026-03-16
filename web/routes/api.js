@@ -1,7 +1,6 @@
 import { Router } from "express";
 import express from "express";
 import { resolve } from "path";
-import { existsSync } from "fs";
 import rateLimit from "express-rate-limit";
 import { classify, initialize } from "@postalsys/bounce-classifier";
 import requireAuth from "../middleware/require-auth.js";
@@ -33,6 +32,63 @@ const LABEL_INFO = {
 };
 
 const VALID_LABELS = Object.keys(LABEL_INFO);
+
+const MODEL_README = `\
+Bounce Classifier Model Files
+==============================
+
+These files are used by the @postalsys/bounce-classifier npm package
+to classify SMTP bounce messages into 16 categories.
+
+To use these model files, copy them into the model/ directory of the
+bounce-classifier package, replacing the existing files.
+
+
+Files required by bounce-classifier
+------------------------------------
+
+  vocab.json              Token vocabulary (word-to-index mapping).
+                          Used to tokenize input text before inference.
+
+  labels.json             Maps numeric model output indices to label
+                          names (e.g. "user_unknown", "spam_blocked").
+
+  group1-shard1of1.bin    Binary model weights (embedding matrix,
+                          dense layer kernels and biases). This is
+                          the core of the neural network.
+
+  model.json              Keras model topology (layer structure,
+                          activation functions, weight shapes). Used
+                          to interpret the binary weights file.
+
+  config.json             Model metadata (vocabulary size, embedding
+                          dimensions, max input length, validation
+                          accuracy from training).
+
+
+Files NOT required by bounce-classifier
+----------------------------------------
+
+  keras_model.h5          Full Keras/TensorFlow model in HDF5 format.
+                          Only needed if you want to continue training
+                          or convert to other formats. Not loaded by
+                          the classifier at runtime.
+
+
+Usage
+-----
+
+  npm install @postalsys/bounce-classifier
+
+  import { classify, initialize } from "@postalsys/bounce-classifier";
+  await initialize();
+  const result = await classify("550 5.1.1 User unknown");
+  console.log(result.label);      // "user_unknown"
+  console.log(result.action);     // "remove"
+  console.log(result.confidence); // 0.95
+
+More information: https://github.com/postalsys/bounce-classifier
+`;
 
 // Per-endpoint rate limits
 const classifyLimit = rateLimit({ windowMs: 60_000, max: 30, message: { error: "Too many requests" } });
@@ -264,26 +320,38 @@ router.post("/api/proposals/bulk-csv", bulkLimit, requireAuth, bulkBodyParser, a
   }
 });
 
-// Download community training data (public)
-router.get("/api/training-data", (req, res) => {
-  const filePath = resolve(config.projectRoot, "data", "community_labeled.jsonl");
-  if (!existsSync(filePath)) {
-    return res.status(404).json({ error: "No training data available yet" });
+// Download trained model files as a tar.gz archive (public)
+router.get("/api/model", async (req, res) => {
+  const modelDir = config.bounceClassifierModelPath;
+  if (!modelDir) {
+    return res.status(404).json({ error: "Model path not configured (set BOUNCE_CLASSIFIER_MODEL_PATH)" });
   }
-  res.download(filePath, "community_labeled.jsonl");
-});
 
-// Training data stats (public)
-router.get("/api/training-data/stats", (req, res) => {
-  const total = db
-    .prepare(`SELECT COUNT(*) as count FROM proposals WHERE status = 'approved' AND exported_at IS NOT NULL`)
-    .get().count;
+  const { readdirSync, writeFileSync, unlinkSync } = await import("fs");
+  const { join } = await import("path");
+  const tar = await import("tar");
 
-  const byLabel = db
-    .prepare(`SELECT proposed_label, COUNT(*) as count FROM proposals WHERE status = 'approved' AND exported_at IS NOT NULL GROUP BY proposed_label ORDER BY count DESC`)
-    .all();
+  let files;
+  try {
+    files = readdirSync(modelDir).filter((f) => !f.startsWith(".") && f !== "README.txt");
+  } catch {
+    return res.status(404).json({ error: "Model directory not found" });
+  }
 
-  res.json({ total, byLabel });
+  if (files.length === 0) {
+    return res.status(404).json({ error: "No model files available" });
+  }
+
+  // Write a temporary README into the model dir for inclusion in the archive
+  const readmePath = join(modelDir, "README.txt");
+  writeFileSync(readmePath, MODEL_README);
+
+  res.setHeader("Content-Type", "application/gzip");
+  res.setHeader("Content-Disposition", "attachment; filename=bounce-classifier-model.tar.gz");
+
+  const stream = tar.create({ gzip: true, cwd: modelDir }, ["README.txt", ...files]);
+  stream.on("end", () => { try { unlinkSync(readmePath); } catch {} });
+  stream.pipe(res);
 });
 
 // List own proposals

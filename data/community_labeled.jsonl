@@ -1,1 +1,3 @@
 {"text":"5.7.0 This message was blocked because its content presents a \npotential security issue. Please visit \nhttps://support.google.com/mail/?p=BlockedMessage to review \nour message content and attachment content guidelines.","label":"spam_blocked"}
+{"text":"421 4.7.28 Our system has detected an unusual rate of unsolicited mail. Try again later.","label":"rate_limited"}
+{"text":"451 4.3.0 Temporary system failure. Try again later.","label":"server_error"}
