@@ -14,6 +14,30 @@ const exportBtn = document.getElementById("export-btn");
 const retrainBtn = document.getElementById("retrain-btn");
 const retrainStatusEl = document.getElementById("retrain-status");
 
+// Bootstrap modal helpers
+const adminModalEl = document.getElementById("admin-modal");
+const adminModal = new bootstrap.Modal(adminModalEl);
+
+function showModal(title, body, { type = "info", confirmText, onConfirm } = {}) {
+  document.getElementById("admin-modal-title").textContent = title;
+  document.getElementById("admin-modal-body").innerHTML = body;
+
+  const footer = document.getElementById("admin-modal-footer");
+  if (onConfirm) {
+    footer.innerHTML =
+      `<button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>` +
+      `<button type="button" class="btn btn-${type} btn-sm" id="admin-modal-confirm">${confirmText || "Confirm"}</button>`;
+    document.getElementById("admin-modal-confirm").addEventListener("click", () => {
+      adminModal.hide();
+      onConfirm();
+    });
+  } else {
+    footer.innerHTML = `<button type="button" class="btn btn-${type} btn-sm" data-bs-dismiss="modal">OK</button>`;
+  }
+
+  adminModal.show();
+}
+
 function getSelectedIds() {
   return Array.from(document.querySelectorAll(".row-checkbox:checked")).map(
     (cb) => Number(cb.value),
@@ -163,9 +187,9 @@ exportBtn.addEventListener("click", async () => {
     const res = await fetch("/admin/api/export", { method: "POST" });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error);
-    alert(`Exported ${data.count} approved proposals to community_labeled.jsonl`);
+    showModal("Export Complete", `Exported <strong>${data.count}</strong> approved proposals to <code>community_labeled.jsonl</code>.`, { type: "success" });
   } catch (err) {
-    alert("Export failed: " + err.message);
+    showModal("Export Failed", escapeHtml(err.message), { type: "danger" });
   } finally {
     exportBtn.disabled = false;
     exportBtn.innerHTML = '<i class="bi bi-download"></i> Export to JSONL';
@@ -173,20 +197,29 @@ exportBtn.addEventListener("click", async () => {
 });
 
 // Retrain
-retrainBtn.addEventListener("click", async () => {
-  if (!confirm("Start model retraining? This may take several minutes.")) return;
-  retrainBtn.disabled = true;
-  try {
-    const res = await fetch("/admin/api/retrain", { method: "POST" });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error);
-    retrainStatusEl.textContent = "Retrain started...";
-    retrainStatusEl.classList.remove("d-none");
-    pollRetrainStatus();
-  } catch (err) {
-    alert("Retrain failed: " + err.message);
-    retrainBtn.disabled = false;
-  }
+retrainBtn.addEventListener("click", () => {
+  showModal(
+    "Retrain Model",
+    "Start model retraining? This may take several minutes.",
+    {
+      type: "primary",
+      confirmText: "Start Retrain",
+      onConfirm: async () => {
+        retrainBtn.disabled = true;
+        try {
+          const res = await fetch("/admin/api/retrain", { method: "POST" });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error);
+          retrainStatusEl.textContent = "Retrain started...";
+          retrainStatusEl.classList.remove("d-none");
+          pollRetrainStatus();
+        } catch (err) {
+          showModal("Retrain Failed", escapeHtml(err.message), { type: "danger" });
+          retrainBtn.disabled = false;
+        }
+      },
+    },
+  );
 });
 
 async function pollRetrainStatus() {
