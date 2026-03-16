@@ -10,8 +10,8 @@ const statsBar = document.getElementById("stats-bar");
 const selectAllCheckbox = document.getElementById("select-all");
 const bulkApproveBtn = document.getElementById("bulk-approve-btn");
 const bulkRejectBtn = document.getElementById("bulk-reject-btn");
-const exportBtn = document.getElementById("export-btn");
-const retrainBtn = document.getElementById("retrain-btn");
+const retrainNewBtn = document.getElementById("retrain-new-btn");
+const retrainExistingBtn = document.getElementById("retrain-existing-btn");
 const retrainStatusEl = document.getElementById("retrain-status");
 
 // Bootstrap modal helpers
@@ -59,7 +59,7 @@ async function loadStats() {
     <span><strong>${c.pending || 0}</strong> <span class="text-body-secondary">pending</span></span>
     <span><strong>${c.approved || 0}</strong> <span class="text-body-secondary">approved</span></span>
     <span><strong>${c.rejected || 0}</strong> <span class="text-body-secondary">rejected</span></span>
-    ${pendingTraining > 0 ? `<span class="text-warning-emphasis"><i class="bi bi-exclamation-triangle"></i> <strong>${pendingTraining}</strong> approved but not yet exported</span>` : ""}
+    ${pendingTraining > 0 ? `<span class="text-warning-emphasis"><i class="bi bi-exclamation-triangle"></i> <strong>${pendingTraining}</strong> approved but not yet included in training</span>` : ""}
   `;
 }
 
@@ -91,7 +91,9 @@ async function loadProposals() {
             <button class="btn btn-sm btn-success" onclick="patchProposal(${p.id}, 'approved')" title="Approve"><i class="bi bi-check-lg"></i></button>
             <button class="btn btn-sm btn-outline-danger" onclick="patchProposal(${p.id}, 'rejected')" title="Reject"><i class="bi bi-x-lg"></i></button>
           </div>
-        ` : `<span class="badge ${p.status === "approved" ? "text-bg-success" : "text-bg-danger"}">${escapeHtml(p.status)}</span>`}
+        ` : currentStatus === "untrained"
+          ? '<span class="badge text-bg-warning">awaiting training</span>'
+          : `<span class="badge ${p.status === "approved" ? "text-bg-success" : "text-bg-danger"}">${escapeHtml(p.status)}</span>`}
       </td>
     </tr>
   `,
@@ -179,45 +181,59 @@ async function bulkAction(status) {
 bulkApproveBtn.addEventListener("click", () => bulkAction("approved"));
 bulkRejectBtn.addEventListener("click", () => bulkAction("rejected"));
 
-// Export
-exportBtn.addEventListener("click", async () => {
-  exportBtn.disabled = true;
-  exportBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Exporting...';
+// Retrain helpers
+function disableRetrainButtons() {
+  retrainNewBtn.disabled = true;
+  retrainExistingBtn.disabled = true;
+}
+
+function enableRetrainButtons() {
+  retrainNewBtn.disabled = false;
+  retrainExistingBtn.disabled = false;
+}
+
+async function startRetrain(exportFirst) {
+  disableRetrainButtons();
   try {
-    const res = await fetch("/admin/api/export", { method: "POST" });
+    if (exportFirst) {
+      const expRes = await fetch("/admin/api/export", { method: "POST" });
+      const expData = await expRes.json();
+      if (!expRes.ok) throw new Error(expData.error);
+    }
+    const res = await fetch("/admin/api/retrain", { method: "POST" });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error);
-    showModal("Export Complete", `Exported <strong>${data.count}</strong> approved proposals to <code>community_labeled.jsonl</code>.`, { type: "success" });
+    retrainStatusEl.textContent = "Retrain started...";
+    retrainStatusEl.classList.remove("d-none");
+    pollRetrainStatus();
   } catch (err) {
-    showModal("Export Failed", escapeHtml(err.message), { type: "danger" });
-  } finally {
-    exportBtn.disabled = false;
-    exportBtn.innerHTML = '<i class="bi bi-download"></i> Export to JSONL';
+    showModal("Retrain Failed", escapeHtml(err.message), { type: "danger" });
+    enableRetrainButtons();
   }
-});
+}
 
-// Retrain
-retrainBtn.addEventListener("click", () => {
+// Retrain with new data: export approved proposals first, then retrain
+retrainNewBtn.addEventListener("click", () => {
   showModal(
-    "Retrain Model",
-    "Start model retraining? This may take several minutes.",
+    "Retrain with New Data",
+    "Export approved proposals and retrain the model? This may take several minutes.",
     {
       type: "primary",
+      confirmText: "Export & Retrain",
+      onConfirm: () => startRetrain(true),
+    },
+  );
+});
+
+// Retrain with existing data: retrain using the last exported dataset
+retrainExistingBtn.addEventListener("click", () => {
+  showModal(
+    "Retrain with Existing Data",
+    "Retrain the model using the previously exported dataset? This may take several minutes.",
+    {
+      type: "secondary",
       confirmText: "Start Retrain",
-      onConfirm: async () => {
-        retrainBtn.disabled = true;
-        try {
-          const res = await fetch("/admin/api/retrain", { method: "POST" });
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.error);
-          retrainStatusEl.textContent = "Retrain started...";
-          retrainStatusEl.classList.remove("d-none");
-          pollRetrainStatus();
-        } catch (err) {
-          showModal("Retrain Failed", escapeHtml(err.message), { type: "danger" });
-          retrainBtn.disabled = false;
-        }
-      },
+      onConfirm: () => startRetrain(false),
     },
   );
 });
@@ -232,7 +248,8 @@ async function pollRetrainStatus() {
   if (data.running) {
     setTimeout(pollRetrainStatus, 3000);
   } else {
-    retrainBtn.disabled = false;
+    enableRetrainButtons();
+    loadStats();
   }
 }
 

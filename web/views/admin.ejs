@@ -15,6 +15,9 @@
     <button class="nav-link" data-status="approved">Approved</button>
   </li>
   <li class="nav-item">
+    <button class="nav-link" data-status="untrained">Untrained</button>
+  </li>
+  <li class="nav-item">
     <button class="nav-link" data-status="rejected">Rejected</button>
   </li>
 </ul>
@@ -26,11 +29,11 @@
   <button id="bulk-reject-btn" class="btn btn-sm btn-danger" disabled>
     <i class="bi bi-x-lg"></i> Reject Selected
   </button>
-  <button id="export-btn" class="btn btn-sm btn-outline-secondary">
-    <i class="bi bi-download"></i> Export to JSONL
+  <button id="retrain-new-btn" class="btn btn-sm btn-outline-primary">
+    <i class="bi bi-arrow-repeat"></i> Retrain with New Data
   </button>
-  <button id="retrain-btn" class="btn btn-sm btn-outline-secondary">
-    <i class="bi bi-arrow-repeat"></i> Retrain Model
+  <button id="retrain-existing-btn" class="btn btn-sm btn-outline-secondary">
+    <i class="bi bi-arrow-repeat"></i> Retrain with Existing Data
   </button>
 </div>
 

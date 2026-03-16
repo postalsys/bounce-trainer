@@ -25,20 +25,30 @@ router.get("/admin/api/proposals", requireAdmin, (req, res) => {
   const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 50));
   const offset = (page - 1) * limit;
 
-  const validStatuses = ["pending", "approved", "rejected"];
+  const validStatuses = ["pending", "approved", "untrained", "rejected"];
   if (!validStatuses.includes(status)) {
     return res.status(400).json({ error: "Invalid status filter" });
   }
 
+  let where;
+  let params;
+  if (status === "untrained") {
+    where = "status = 'approved' AND exported_at IS NULL";
+    params = [limit, offset];
+  } else {
+    where = "status = ?";
+    params = [status, limit, offset];
+  }
+
   const rows = db
     .prepare(
-      `SELECT * FROM proposals WHERE status = ? ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+      `SELECT * FROM proposals WHERE ${where} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
     )
-    .all(status, limit, offset);
+    .all(...params);
 
   const total = db
-    .prepare(`SELECT COUNT(*) as count FROM proposals WHERE status = ?`)
-    .get(status).count;
+    .prepare(`SELECT COUNT(*) as count FROM proposals WHERE ${where}`)
+    .get(...(status === "untrained" ? [] : [status])).count;
 
   res.json({ proposals: rows, total, page, limit });
 });
