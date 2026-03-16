@@ -1,0 +1,9 @@
+label,message
+user_unknown,"550 5.1.1 The email account that you tried to reach does not exist."
+mailbox_full,"552 5.2.2 The email account that you tried to reach is over quota."
+greylisting,"421 4.7.0 Try again later, closing connection."
+ip_blacklisted,"550 5.7.1 Service unavailable; client host blocked by Spamhaus ZEN"
+auth_failure,"550 5.7.1 Unauthenticated email is not accepted due to domain DMARC policy."
+rate_limited,"421 4.7.28 Our system has detected an unusual rate of unsolicited mail. Try again later."
+spam_blocked,"550 Message rejected as spam by content filtering"
+server_error,"451 4.3.0 Temporary system failure. Try again later."

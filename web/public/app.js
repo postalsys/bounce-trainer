@@ -159,3 +159,148 @@ messageEl.addEventListener("keydown", (e) => {
     classifyBtn.click();
   }
 });
+
+// --- Bulk CSV upload ---
+const csvFileInput = document.getElementById("csv-file");
+const csvPreview = document.getElementById("csv-preview");
+const csvPreviewBody = document.getElementById("csv-preview-body");
+const csvCount = document.getElementById("csv-count");
+const csvUploadBtn = document.getElementById("csv-upload-btn");
+const csvStatus = document.getElementById("csv-status");
+
+let csvContent = null;
+
+if (csvFileInput) {
+  csvFileInput.addEventListener("change", () => {
+    const file = csvFileInput.files[0];
+    if (!file) {
+      csvPreview.classList.add("d-none");
+      csvContent = null;
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      csvContent = reader.result;
+      const records = parseCsv(csvContent);
+      if (records.length < 2) {
+        csvStatus.className = "alert alert-danger small";
+        csvStatus.textContent = "CSV must have a header row and at least one data row.";
+        csvStatus.classList.remove("d-none");
+        csvPreview.classList.add("d-none");
+        return;
+      }
+
+      const [h1, h2] = records[0].map((h) => h.toLowerCase().trim());
+      if (h1 !== "label" || h2 !== "message") {
+        csvStatus.className = "alert alert-danger small";
+        csvStatus.textContent = 'CSV header must be exactly "label,message". Got: "' + records[0].join(",") + '"';
+        csvStatus.classList.remove("d-none");
+        csvPreview.classList.add("d-none");
+        return;
+      }
+
+      csvStatus.classList.add("d-none");
+
+      let html = "";
+      let validCount = 0;
+      for (let i = 1; i < records.length; i++) {
+        const label = (records[i][0] || "").trim();
+        const msg = (records[i][1] || "").trim();
+        if (!label || !msg) continue;
+        const truncMsg = msg.length > 100 ? msg.slice(0, 100) + "..." : msg;
+        html += `<tr><td>${i}</td><td><span class="badge text-bg-primary">${escapeHtml(label)}</span></td><td class="font-monospace">${escapeHtml(truncMsg)}</td></tr>`;
+        validCount++;
+      }
+      csvPreviewBody.innerHTML = html;
+      csvCount.textContent = `${validCount} row${validCount !== 1 ? "s" : ""} found`;
+      csvPreview.classList.remove("d-none");
+    };
+    reader.readAsText(file);
+  });
+
+  if (csvUploadBtn) {
+    csvUploadBtn.addEventListener("click", async () => {
+      if (!csvContent) return;
+      csvUploadBtn.disabled = true;
+      csvUploadBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Uploading...';
+      csvStatus.classList.add("d-none");
+      try {
+        const res = await fetch("/api/proposals/bulk-csv", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ csv: csvContent }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        let msg = `Uploaded ${data.inserted} proposal${data.inserted !== 1 ? "s" : ""}.`;
+        if (data.errors && data.errors.length > 0) {
+          msg += ` ${data.errors.length} row${data.errors.length !== 1 ? "s" : ""} skipped: ${data.errors.map((e) => `row ${e.row}: ${e.error}`).join("; ")}`;
+        }
+        csvStatus.className = "alert alert-success small";
+        csvStatus.textContent = msg;
+        csvStatus.classList.remove("d-none");
+        csvPreview.classList.add("d-none");
+        csvFileInput.value = "";
+        csvContent = null;
+      } catch (err) {
+        csvStatus.className = "alert alert-danger small";
+        csvStatus.textContent = err.message;
+        csvStatus.classList.remove("d-none");
+      } finally {
+        csvUploadBtn.disabled = false;
+        csvUploadBtn.innerHTML = '<i class="bi bi-upload"></i> Upload All';
+      }
+    });
+  }
+}
+
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+// RFC 4180 CSV parser - handles quoted fields with commas and escaped quotes
+function parseCsv(text) {
+  const records = [];
+  let pos = 0;
+  text = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+
+  function parseField() {
+    if (pos >= text.length) return "";
+    if (text[pos] === '"') {
+      pos++;
+      let val = "";
+      while (pos < text.length) {
+        if (text[pos] === '"') {
+          if (pos + 1 < text.length && text[pos + 1] === '"') {
+            val += '"';
+            pos += 2;
+          } else {
+            pos++;
+            break;
+          }
+        } else {
+          val += text[pos];
+          pos++;
+        }
+      }
+      return val;
+    }
+    let val = "";
+    while (pos < text.length && text[pos] !== "," && text[pos] !== "\n") {
+      val += text[pos];
+      pos++;
+    }
+    return val;
+  }
+
+  while (pos < text.length) {
+    const f1 = parseField();
+    if (pos < text.length && text[pos] === ",") pos++;
+    const f2 = parseField();
+    if (pos < text.length && text[pos] === "\n") pos++;
+    if (f1 || f2) records.push([f1, f2]);
+  }
+  return records;
+}
