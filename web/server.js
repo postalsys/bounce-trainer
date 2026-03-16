@@ -21,6 +21,9 @@ const SQLiteStore = connectSqlite3(session);
 
 const app = express();
 
+// Trust reverse proxy (Caddy) for X-Forwarded-For headers
+app.set("trust proxy", 1);
+
 // Security headers
 app.use(
   helmet({
