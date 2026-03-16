@@ -1,7 +1,7 @@
 import { Router } from "express";
 import express from "express";
-import { resolve, dirname } from "path";
-import { readFileSync } from "fs";
+import { resolve, dirname, join } from "path";
+import { readFileSync, existsSync } from "fs";
 import { fileURLToPath } from "url";
 import rateLimit from "express-rate-limit";
 import { classify, initialize, reload, getModelInfo } from "@postalsys/bounce-classifier";
@@ -112,11 +112,15 @@ Usage
 More information: https://github.com/postalsys/bounce-classifier
 `;
 
-// Initialize classifier with custom model path if configured
+// Check if a model directory has the required files
+function hasModelFiles(dir) {
+  return dir && existsSync(join(dir, "vocab.json")) && existsSync(join(dir, "group1-shard1of1.bin"));
+}
+
+// Initialize classifier with custom model path if configured and available
 async function ensureInitialized() {
   const modelPath = config.bounceClassifierModelPath;
-  if (modelPath) {
-    // Use the retrained model from the configured path
+  if (modelPath && hasModelFiles(modelPath)) {
     await initialize({ modelPath });
     modelSource = "retrained";
   } else {
