@@ -30,7 +30,8 @@ fetch("/api/model/info")
     const el = document.getElementById("model-badge");
     if (el && data.modelSource) {
       const isRetrained = data.modelSource === "retrained";
-      el.innerHTML = `<span class="badge ${isRetrained ? "text-bg-success" : "text-bg-secondary"}">${isRetrained ? "Retrained model" : "Bundled model"}</span>`;
+      const hash = data.modelHash ? ` (${data.modelHash.slice(0, 8)})` : "";
+      el.innerHTML = `<span class="badge ${isRetrained ? "text-bg-success" : "text-bg-secondary"}">${isRetrained ? "Retrained" : "Bundled"}${hash}</span>`;
     }
   })
   .catch(() => {});
@@ -106,7 +107,7 @@ function displayResult(result) {
     ${result.usedFallback ? '<div class="d-flex justify-content-between border-bottom py-2 small"><span class="text-body-secondary">Note</span><span class="text-warning fw-medium">Used fallback rules</span></div>' : ""}
     <div class="d-flex justify-content-between border-bottom py-2 small">
       <span class="text-body-secondary">Model</span>
-      <span class="fw-medium">${result.modelSource === "retrained" ? '<span class="text-success">Retrained</span>' : "Bundled"}</span>
+      <span class="fw-medium">${result.modelSource === "retrained" ? '<span class="text-success">Retrained</span>' : "Bundled"}${result.modelHash ? ` <code class="text-body-secondary">${result.modelHash.slice(0, 8)}</code>` : ""}</span>
     </div>
 
     <div class="row row-cols-2 g-1 mt-2">

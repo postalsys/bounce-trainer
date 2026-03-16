@@ -2,7 +2,7 @@ import { Router } from "express";
 import express from "express";
 import { resolve } from "path";
 import rateLimit from "express-rate-limit";
-import { classify, initialize, reload } from "@postalsys/bounce-classifier";
+import { classify, initialize, reload, getModelInfo } from "@postalsys/bounce-classifier";
 import requireAuth from "../middleware/require-auth.js";
 import { anonymizeMessage } from "../lib/anonymize.js";
 import db from "../db.js";
@@ -148,7 +148,8 @@ router.post("/api/classify", classifyLimit, async (req, res) => {
     await ensureInitialized();
     const truncated = message.trim().slice(0, MAX_MESSAGE_LENGTH);
     const result = await classify(truncated);
-    res.json({ ...safeClassifyResult(result), modelSource });
+    const info = getModelInfo();
+    res.json({ ...safeClassifyResult(result), modelSource, modelHash: info?.modelHash || null });
   } catch {
     res.status(500).json({ error: "Classification failed" });
   }
@@ -156,7 +157,7 @@ router.post("/api/classify", classifyLimit, async (req, res) => {
 
 // Model info (public)
 router.get("/api/model/info", (req, res) => {
-  res.json({ modelSource });
+  res.json({ modelSource, ...getModelInfo() });
 });
 
 // Get available labels

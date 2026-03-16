@@ -188,6 +188,13 @@ def main():
         }, f, indent=2)
     print(f"  Saved label mapping to {labels_path}")
 
+    # Compute model hash from weights file
+    import hashlib
+    from datetime import datetime, timezone
+    weights_path = output_dir / 'group1-shard1of1.bin'
+    weights_hash = hashlib.sha256(weights_path.read_bytes()).hexdigest()[:16]
+    trained_at = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+
     # Save model config
     config_path = output_dir / 'config.json'
     with open(config_path, 'w') as f:
@@ -196,9 +203,13 @@ def main():
             'max_length': MAX_LENGTH,
             'embedding_dim': EMBEDDING_DIM,
             'num_labels': len(unique_labels),
-            'validation_accuracy': float(val_acc)
+            'validation_accuracy': float(val_acc),
+            'training_samples': len(texts),
+            'model_hash': weights_hash,
+            'trained_at': trained_at,
         }, f, indent=2)
     print(f"  Saved config to {config_path}")
+    print(f"  Model hash: {weights_hash}")
 
     print("\nDone!")
     print(f"\nModel files in {output_dir}:")
