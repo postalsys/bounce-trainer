@@ -109,7 +109,7 @@ router.post("/admin/api/proposals/bulk", requireAdmin, (req, res) => {
 router.post("/admin/api/export", requireAdmin, (req, res) => {
   const rows = db
     .prepare(
-      `SELECT message_text, proposed_label FROM proposals WHERE status = 'approved' ORDER BY created_at`,
+      `SELECT id, message_text, proposed_label FROM proposals WHERE status = 'approved' ORDER BY created_at`,
     )
     .all();
 
@@ -119,6 +119,17 @@ router.post("/admin/api/export", requireAdmin, (req, res) => {
     .join("\n");
 
   writeFileSync(outputPath, content ? content + "\n" : "");
+
+  // Mark all exported proposals
+  const now = new Date().toISOString();
+  const ids = rows.map((r) => r.id);
+  if (ids.length > 0) {
+    const markExported = db.transaction((ids) => {
+      const stmt = db.prepare(`UPDATE proposals SET exported_at = ? WHERE id = ?`);
+      for (const id of ids) stmt.run(now, id);
+    });
+    markExported(ids);
+  }
 
   res.json({ ok: true, count: rows.length, path: outputPath });
 });

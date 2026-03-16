@@ -33,4 +33,11 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_proposals_created ON proposals(created_at);
 `);
 
+// Migration: add exported_at column if missing
+try {
+  db.exec(`ALTER TABLE proposals ADD COLUMN exported_at TEXT`);
+} catch {
+  // Column already exists
+}
+
 export default db;

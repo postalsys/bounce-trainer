@@ -13,7 +13,9 @@
       <div class="container">
         <a class="navbar-brand fw-bold" href="/">Bounce Trainer</a>
         <div class="d-flex align-items-center gap-3">
+          <a class="nav-link px-0" href="/api/training-data"><i class="bi bi-download"></i> Training Data</a>
           <% if (user) { %>
+            <a class="nav-link px-0" href="/my-proposals"><i class="bi bi-list-check"></i> My Proposals</a>
             <% if (user.isAdmin) { %>
               <a class="nav-link px-0" href="/admin"><i class="bi bi-shield-lock"></i> Admin</a>
             <% } %>

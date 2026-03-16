@@ -1,8 +1,11 @@
 import { Router } from "express";
+import { resolve } from "path";
+import { existsSync } from "fs";
 import { classify, initialize, getLabels } from "@postalsys/bounce-classifier";
 import requireAuth from "../middleware/require-auth.js";
 import { anonymizeMessage } from "../lib/anonymize.js";
 import db from "../db.js";
+import config from "../config.js";
 
 const router = Router();
 
@@ -232,6 +235,28 @@ router.post("/api/proposals/bulk-csv", requireAuth, async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
+});
+
+// Download community training data (public)
+router.get("/api/training-data", (req, res) => {
+  const filePath = resolve(config.projectRoot, "data", "community_labeled.jsonl");
+  if (!existsSync(filePath)) {
+    return res.status(404).json({ error: "No training data available yet" });
+  }
+  res.download(filePath, "community_labeled.jsonl");
+});
+
+// Training data stats (public)
+router.get("/api/training-data/stats", (req, res) => {
+  const total = db
+    .prepare(`SELECT COUNT(*) as count FROM proposals WHERE status = 'approved' AND exported_at IS NOT NULL`)
+    .get().count;
+
+  const byLabel = db
+    .prepare(`SELECT proposed_label, COUNT(*) as count FROM proposals WHERE status = 'approved' AND exported_at IS NOT NULL GROUP BY proposed_label ORDER BY count DESC`)
+    .all();
+
+  res.json({ total, byLabel });
 });
 
 // List own proposals
