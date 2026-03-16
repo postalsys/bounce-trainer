@@ -1,10 +1,15 @@
 <%- include('header', { title: 'Submit', user }) %>
 
-<h1 class="h3 mb-1">SMTP Bounce Classifier</h1>
-<p class="text-body-secondary mb-4">
-  Help improve the <a href="https://github.com/postalsys/bounce-classifier" target="_blank">bounce-classifier</a>
-  by submitting labeled SMTP bounce messages.
-</p>
+<div class="d-flex align-items-center gap-3 mb-4">
+  <img src="/images/sorting-emails.png" alt="Dog sorting bounce emails" width="100" class="d-none d-md-block" />
+  <div>
+    <h1 class="h3 mb-1">SMTP Bounce Classifier</h1>
+    <p class="text-body-secondary mb-0">
+      Help improve the <a href="https://github.com/postalsys/bounce-classifier" target="_blank">bounce-classifier</a>
+      by submitting labeled SMTP bounce messages.
+    </p>
+  </div>
+</div>
 
 <div id="status" class="alert alert-danger d-none" role="alert"></div>
 <div id="success" class="alert alert-success d-none" role="alert"></div>

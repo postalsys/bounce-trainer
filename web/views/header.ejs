@@ -4,6 +4,9 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title><%= typeof title !== 'undefined' ? title + ' - ' : '' %>Bounce Trainer</title>
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="icon" href="/favicon-192.png" type="image/png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="stylesheet" href="/vendor/bootstrap/css/bootstrap.min.css" />
     <link rel="stylesheet" href="/vendor/bootstrap-icons/bootstrap-icons.min.css" />
     <link rel="stylesheet" href="/style.css" />
@@ -11,7 +14,7 @@
   <body>
     <nav class="navbar navbar-expand-sm bg-body-tertiary border-bottom mb-4">
       <div class="container">
-        <a class="navbar-brand fw-bold" href="/">Bounce Trainer</a>
+        <a class="navbar-brand fw-bold d-flex align-items-center gap-2" href="/"><img src="/favicon-192.png" alt="" width="28" height="28"> Bounce Trainer</a>
         <div class="d-flex align-items-center gap-3">
           <a class="nav-link px-0" href="/api/training-data"><i class="bi bi-download"></i> Training Data</a>
           <% if (user) { %>
