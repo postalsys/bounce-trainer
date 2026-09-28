@@ -11,6 +11,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 VENV_DIR="$SCRIPT_DIR/venv"
 MIN_PYTHON="3.10"
+# TensorFlow publishes stable wheels only up to this version
+MAX_PYTHON="3.13"
 
 # --- Helpers ---
 
@@ -18,17 +20,21 @@ die() { echo "ERROR: $*" >&2; exit 1; }
 
 check_python() {
     local cmd
-    for cmd in python3 python; do
+    for cmd in python3.13 python3.12 python3.11 python3.10 python3 python; do
         if command -v "$cmd" &>/dev/null; then
             local ver
             ver=$("$cmd" -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
-            if "$cmd" -c "import sys; exit(0 if sys.version_info >= (${MIN_PYTHON//./,}) else 1)" 2>/dev/null; then
+            if "$cmd" -c "import sys; exit(0 if (${MIN_PYTHON//./,}) <= sys.version_info[:2] <= (${MAX_PYTHON//./,}) else 1)" 2>/dev/null; then
                 echo "$cmd"
                 return
             fi
-            echo "Found $cmd ($ver) but need >= $MIN_PYTHON" >&2
+            echo "Found $cmd ($ver) but need $MIN_PYTHON to $MAX_PYTHON" >&2
         fi
     done
+    # uv can provide a managed interpreter when the system one is too new
+    if command -v uv &>/dev/null; then
+        uv python install "$MAX_PYTHON" >&2 && uv python find "$MAX_PYTHON" && return
+    fi
     return 1
 }
 
@@ -46,12 +52,13 @@ if [[ "${1:-}" == "--clean" ]]; then
 fi
 
 # Find suitable Python
-PYTHON=$(check_python) || die "Python >= $MIN_PYTHON is required but not found.
+PYTHON=$(check_python) || die "Python $MIN_PYTHON to $MAX_PYTHON is required but not found.
 Install it with your package manager:
   Ubuntu/Debian:  sudo apt install python3 python3-venv python3-dev
   Fedora/RHEL:    sudo dnf install python3 python3-devel
   Arch:           sudo pacman -S python
-  macOS:          brew install python@3.12"
+  macOS:          brew install python@3.12
+  Any platform:   install uv (https://docs.astral.sh/uv/) and rerun"
 
 PY_VERSION=$("$PYTHON" -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}')")
 echo "Using $PYTHON ($PY_VERSION)"
@@ -88,10 +95,10 @@ echo ""
 echo "Verifying installation..."
 python -c "
 import tensorflow as tf
-import tensorflowjs
+import tf_keras
 import numpy
 print(f'  TensorFlow {tf.__version__}')
-print(f'  TensorFlow.js converter {tensorflowjs.__version__}')
+print(f'  tf-keras {tf_keras.__version__}')
 print(f'  NumPy {numpy.__version__}')
 "
 
