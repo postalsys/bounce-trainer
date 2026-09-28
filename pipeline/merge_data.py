@@ -21,6 +21,27 @@ def load_jsonl(filepath):
     return records
 
 
+def merge_records(baseline, community):
+    """Merge baseline and community records, deduplicating by exact text.
+
+    Community records win: a community row whose text already exists in the
+    baseline replaces that row's label in place, so admin-approved
+    relabels actually reach training. Within each source the last
+    occurrence of a text wins. Returns (merged, overridden_count).
+    """
+    merged = {}
+    for record in baseline:
+        merged[record.get("text", "")] = record
+    overridden = 0
+    for record in community:
+        text = record.get("text", "")
+        previous = merged.get(text)
+        if previous is not None and previous.get("label") != record.get("label"):
+            overridden += 1
+        merged[text] = record
+    return list(merged.values()), overridden
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Merge community and baseline bounce training data."
@@ -43,6 +64,13 @@ def main():
         default="output/merged.jsonl",
         help="Output merged JSONL file. Default: output/merged.jsonl",
     )
+    parser.add_argument(
+        "--exclude",
+        type=str,
+        default=None,
+        help="JSONL whose texts must never be trained on (the gold evaluation set). "
+        "Also reads $GOLD_SET_PATH env var.",
+    )
     args = parser.parse_args()
 
     # Resolve baseline path from argument or environment variable
@@ -62,28 +90,23 @@ def main():
     else:
         print("No baseline data specified (use --baseline or $PRIVATE_BASELINE_PATH).")
 
-    # Merge and deduplicate by exact text
-    seen_texts = set()
-    merged = []
+    merged, community_overrides = merge_records(baseline, community)
+    community_new = len(merged) - len({r.get("text", "") for r in baseline})
 
-    # Baseline first so community contributions can override labels
-    for record in baseline:
-        text = record.get("text", "")
-        if text not in seen_texts:
-            seen_texts.add(text)
-            merged.append(record)
-
-    # Then community data
-    community_new = 0
-    community_dupes = 0
-    for record in community:
-        text = record.get("text", "")
-        if text not in seen_texts:
-            seen_texts.add(text)
-            merged.append(record)
-            community_new += 1
-        else:
-            community_dupes += 1
+    # Keep evaluation rows out of training permanently
+    exclude_path = args.exclude or os.environ.get("GOLD_SET_PATH")
+    excluded = 0
+    if exclude_path:
+        exclude_texts = {r.get("text", "") for r in load_jsonl(exclude_path)}
+        before = len(merged)
+        merged = [r for r in merged if r.get("text", "") not in exclude_texts]
+        excluded = before - len(merged)
+        print(f"Excluded {excluded:,} rows found in {exclude_path}")
+    else:
+        print(
+            "WARNING: no gold set to exclude (--exclude or $GOLD_SET_PATH). "
+            "Any evaluation on gold rows that are also in the baseline will be inflated."
+        )
 
     # Write output
     os.makedirs(os.path.dirname(args.output) or ".", exist_ok=True)
@@ -97,7 +120,9 @@ def main():
     print(f"{'=' * 50}")
     print(f"  Community records:    {len(community):,}")
     print(f"  Baseline records:     {len(baseline):,}")
-    print(f"  Duplicates removed:   {community_dupes:,}")
+    print(f"  New from community:   {community_new:,}")
+    print(f"  Labels overridden:    {community_overrides:,}")
+    print(f"  Excluded (gold set):  {excluded:,}")
     print(f"  Merged total:         {len(merged):,}")
     print(f"\nOutput written to {args.output}")
 
