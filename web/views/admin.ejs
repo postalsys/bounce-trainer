@@ -37,6 +37,14 @@
   </button>
 </div>
 
+<div class="d-flex align-items-center gap-2 mb-3 small">
+  <label for="sort-select" class="text-body-secondary">Sort</label>
+  <select id="sort-select" class="form-select form-select-sm w-auto">
+    <option value="newest">Newest first</option>
+    <option value="disagreement">TypeSafe disagrees first</option>
+  </select>
+</div>
+
 <div id="retrain-status" class="alert alert-info d-none" role="alert"></div>
 
 <div class="table-responsive">
@@ -48,6 +56,7 @@
         <th>Proposed</th>
         <th>Model Says</th>
         <th>Conf.</th>
+        <th>TypeSafe</th>
         <th>Submitted By</th>
         <th>Actions</th>
       </tr>

@@ -33,11 +33,20 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_proposals_created ON proposals(created_at);
 `);
 
-// Migration: add exported_at column if missing
-try {
-  db.exec(`ALTER TABLE proposals ADD COLUMN exported_at TEXT`);
-} catch {
-  // Column already exists
+// Migrations: add columns if missing
+for (const column of [
+  "exported_at TEXT",
+  // TypeSafe pre-screen of the proposal (lib/typesafe.js)
+  "typesafe_label TEXT",
+  "typesafe_confidence REAL",
+  "typesafe_model TEXT",
+  "typesafe_labels_version TEXT",
+]) {
+  try {
+    db.exec(`ALTER TABLE proposals ADD COLUMN ${column}`);
+  } catch {
+    // Column already exists
+  }
 }
 
 export default db;

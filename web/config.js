@@ -55,6 +55,13 @@ const config = {
   ),
 
   privateBaselinePath: process.env.PRIVATE_BASELINE_PATH || "",
+  goldSetPath: process.env.GOLD_SET_PATH || "",
+
+  // Optional TypeSafe pre-screen of proposals; disabled without a key
+  typesafe: {
+    apiKey: process.env.TYPESAFE_API_KEY || "",
+    model: process.env.TYPESAFE_MODEL || "jev-1.13.0",
+  },
   bounceClassifierModelPath: process.env.BOUNCE_CLASSIFIER_MODEL_PATH || "",
 
   projectRoot: resolve(__dirname, ".."),

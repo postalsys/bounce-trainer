@@ -2,6 +2,7 @@
 
 let currentStatus = "pending";
 let currentPage = 1;
+let currentSort = "newest";
 const limit = 50;
 
 const tbody = document.getElementById("proposals-body");
@@ -69,14 +70,23 @@ async function loadStats() {
   `;
 }
 
+function typesafeCell(p) {
+  if (!p.typesafe_label) return "-";
+  const confidence = `${(p.typesafe_confidence * 100).toFixed(0)}%`;
+  const text = `${escapeHtml(p.typesafe_label)} ${confidence}`;
+  return p.typesafe_label === p.proposed_label
+    ? text
+    : `<span class="badge text-bg-warning" title="TypeSafe disagrees with the proposed label">${text}</span>`;
+}
+
 async function loadProposals() {
   const res = await fetch(
-    `/admin/api/proposals?status=${currentStatus}&page=${currentPage}&limit=${limit}`,
+    `/admin/api/proposals?status=${currentStatus}&page=${currentPage}&limit=${limit}&sort=${currentSort}`,
   );
   const data = await res.json();
 
   if (data.proposals.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="7" class="text-center text-body-secondary py-4">No ${currentStatus} proposals</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8" class="text-center text-body-secondary py-4">No ${currentStatus} proposals</td></tr>`;
     paginationEl.innerHTML = "";
     return;
   }
@@ -90,6 +100,7 @@ async function loadProposals() {
       <td><span class="badge text-bg-primary">${escapeHtml(p.proposed_label)}</span></td>
       <td class="small">${escapeHtml(p.model_label || "-")}</td>
       <td class="small">${p.model_confidence ? (p.model_confidence * 100).toFixed(0) + "%" : "-"}</td>
+      <td class="small">${typesafeCell(p)}</td>
       <td class="small">${escapeHtml(p.github_username)}</td>
       <td>
         ${
@@ -145,6 +156,12 @@ document.querySelectorAll(".nav-link[data-status]").forEach((tab) => {
     currentPage = 1;
     loadProposals();
   });
+});
+
+document.getElementById("sort-select").addEventListener("change", (event) => {
+  currentSort = event.target.value;
+  currentPage = 1;
+  loadProposals();
 });
 
 // Select all

@@ -12,6 +12,7 @@ import {
 } from "@postalsys/bounce-classifier";
 import requireAuth from "../middleware/require-auth.js";
 import { anonymizeMessage } from "../lib/anonymize.js";
+import { prescreenProposal, prescreenProposals } from "../lib/typesafe.js";
 import db from "../db.js";
 import config from "../config.js";
 
@@ -96,8 +97,9 @@ Files required by bounce-classifier
                           the core of the neural network.
 
   model.json              Keras model topology (layer structure,
-                          activation functions, weight shapes). Used
-                          to interpret the binary weights file.
+                          activation functions, weight shapes). Kept
+                          for TensorFlow.js compatibility; the
+                          classifier reads the weights directly.
 
   config.json             Model metadata (vocabulary size, embedding
                           dimensions, max input length, validation
@@ -106,6 +108,9 @@ Files required by bounce-classifier
 
 Files NOT required by bounce-classifier
 ----------------------------------------
+
+  validation_report.json  Per-label precision and recall on the
+                          stratified validation split from training.
 
   keras_model.h5          Full Keras/TensorFlow model in HDF5 format.
                           Only needed if you want to continue training
@@ -219,7 +224,8 @@ router.get("/api/model/info", (req, res) => {
   const active = getModelInfo();
   res.json({
     modelSource,
-    active: active || bundledModelInfo,
+    // getModelInfo() always returns an object; fall back until it is loaded
+    active: active.initialized ? active : bundledModelInfo,
     bundled: bundledModelInfo,
   });
 });
@@ -265,6 +271,8 @@ router.post("/api/proposals", proposalLimit, requireAuth, async (req, res) => {
       classification.label,
       classification.confidence,
     );
+
+    prescreenProposal(db, result.lastInsertRowid, anonymized, config.typesafe);
 
     res.status(201).json({
       id: result.lastInsertRowid,
@@ -334,11 +342,9 @@ router.post(
     }
 
     if (records.length < 2) {
-      return res
-        .status(400)
-        .json({
-          error: "CSV must have a header row and at least one data row",
-        });
+      return res.status(400).json({
+        error: "CSV must have a header row and at least one data row",
+      });
     }
 
     const [h1, h2] = records[0].map((h) => h.toLowerCase());
@@ -400,20 +406,21 @@ router.post(
       VALUES (?, ?, ?, ?, ?, ?)
     `);
 
-      const insertAll = db.transaction((items) => {
-        for (const item of items) {
-          stmt.run(
+      const insertAll = db.transaction((items) =>
+        items.map((item) => ({
+          id: stmt.run(
             req.user.username,
             req.user.id,
             item.anonymized,
             item.label,
             item.modelLabel,
             item.modelConfidence,
-          );
-        }
-      });
+          ).lastInsertRowid,
+          text: item.anonymized,
+        })),
+      );
 
-      insertAll(prepared);
+      prescreenProposals(db, insertAll(prepared), config.typesafe);
 
       res.status(201).json({
         inserted: prepared.length,
@@ -429,11 +436,9 @@ router.post(
 router.get("/api/model", async (req, res) => {
   const modelDir = config.bounceClassifierModelPath;
   if (!modelDir) {
-    return res
-      .status(404)
-      .json({
-        error: "Model path not configured (set BOUNCE_CLASSIFIER_MODEL_PATH)",
-      });
+    return res.status(404).json({
+      error: "Model path not configured (set BOUNCE_CLASSIFIER_MODEL_PATH)",
+    });
   }
 
   const { readdirSync, writeFileSync, unlinkSync } = await import("fs");

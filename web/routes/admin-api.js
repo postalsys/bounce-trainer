@@ -28,6 +28,14 @@ const VALID_LABELS = [
   "virus_detected",
 ];
 
+// Admin queue orderings. "disagreement" puts proposals whose label TypeSafe
+// disputes first, most confident dispute first (NULLs sort last under DESC).
+const ORDER_BY = {
+  newest: "created_at DESC",
+  disagreement:
+    "CASE WHEN typesafe_label != proposed_label THEN typesafe_confidence END DESC, created_at DESC",
+};
+
 // Track retrain status in memory
 let retrainStatus = { running: false, lastLog: "", lastRun: null };
 
@@ -42,6 +50,10 @@ router.get("/admin/api/proposals", requireAdmin, (req, res) => {
   if (!validStatuses.includes(status)) {
     return res.status(400).json({ error: "Invalid status filter" });
   }
+  const sort = req.query.sort || "newest";
+  if (!Object.hasOwn(ORDER_BY, sort)) {
+    return res.status(400).json({ error: "Invalid sort" });
+  }
 
   let where;
   let params;
@@ -55,7 +67,7 @@ router.get("/admin/api/proposals", requireAdmin, (req, res) => {
 
   const rows = db
     .prepare(
-      `SELECT * FROM proposals WHERE ${where} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+      `SELECT * FROM proposals WHERE ${where} ORDER BY ${ORDER_BY[sort]} LIMIT ? OFFSET ?`,
     )
     .all(...params);
 
@@ -63,7 +75,7 @@ router.get("/admin/api/proposals", requireAdmin, (req, res) => {
     .prepare(`SELECT COUNT(*) as count FROM proposals WHERE ${where}`)
     .get(...(status === "untrained" ? [] : [status])).count;
 
-  res.json({ proposals: rows, total, page, limit });
+  res.json({ proposals: rows, total, page, limit, sort });
 });
 
 // Approve or reject a proposal
@@ -207,6 +219,9 @@ router.post("/admin/api/retrain", requireAdmin, (req, res) => {
   };
   if (config.privateBaselinePath) {
     env.PRIVATE_BASELINE_PATH = config.privateBaselinePath;
+  }
+  if (config.goldSetPath) {
+    env.GOLD_SET_PATH = config.goldSetPath;
   }
   if (config.bounceClassifierModelPath) {
     env.BOUNCE_CLASSIFIER_MODEL_PATH = config.bounceClassifierModelPath;

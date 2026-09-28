@@ -1,0 +1,148 @@
+{
+  "version": "labels-v1",
+  "instructions": {
+    "task": "Classify why the SMTP server rejected or deferred the email, based only on the bounce text in `bounce_text`.",
+    "context": "`bounce_text` is the diagnostic text a receiving mail server returned for one delivery attempt. Email addresses, IP addresses, hostnames, session ids and timestamps were replaced with uppercase placeholders such as EMAIL, IP, DOMAIN, HOSTNAME, SESSION_ID, <MSG_ID> and TIMESTAMP.",
+    "rules": [
+      "Judge the reason the text states, not the SMTP code alone. Use the code only when the text says nothing more specific.",
+      "When the text names a blocklist or DNSBL, decide between ip_blacklisted and domain_blacklisted by what is listed, not by the word blocklist.",
+      "Pick unknown only when no other category applies."
+    ]
+  },
+  "labels": {
+    "auth_failure": {
+      "covers": "The message failed sender authentication or a required transport security check: SPF, DKIM or DMARC failure, unauthenticated sender, missing or failed TLS when the receiver requires it.",
+      "not_this": "Rejections that only say the content looks like spam are spam_blocked. SMTP AUTH login failures for relaying are relay_denied.",
+      "examples": [
+        "550 5.7.26 Unauthenticated email from DOMAIN is not accepted due to domain's DMARC policy",
+        "550 5.7.1 SPF check failed"
+      ]
+    },
+    "domain_blacklisted": {
+      "covers": "The sender's domain, or a domain or URL in the message, is on a blocklist (URIBL, SURBL, Spamhaus DBL, a domain reputation list).",
+      "not_this": "A listed sending IP address is ip_blacklisted. Low domain reputation without any list is spam_blocked.",
+      "examples": [
+        "554 5.7.1 Service unavailable; Sender domain DOMAIN blocked using dbl.spamhaus.org",
+        "550 URL in message is listed in multi.uribl.com"
+      ]
+    },
+    "geo_blocked": {
+      "covers": "The receiver refuses mail because of the sender's country, region or country-code top-level domain.",
+      "not_this": "A block of one specific IP or network without a geographic reason is ip_blacklisted or policy_blocked.",
+      "examples": ["550 Geographic Region is Blocked", "554 Blocked IP-Country"]
+    },
+    "greylisting": {
+      "covers": "A temporary deferral that asks the sender to retry later, typically for greylisting or a generic 4xx try again later with no stated load or rate reason.",
+      "not_this": "A deferral that says the sender sent too many messages or connections is rate_limited. A deferral caused by a server fault, disk or service outage is server_error.",
+      "examples": [
+        "451 4.7.1 Greylisted, please try again in 300 seconds",
+        "450 4.2.0 Recipient address rejected: Greylisted"
+      ]
+    },
+    "invalid_address": {
+      "covers": "The recipient address or its domain is syntactically invalid or cannot receive mail at all: malformed address, domain does not exist, no MX or mail host for the domain.",
+      "not_this": "A well-formed address on a working domain whose mailbox does not exist is user_unknown.",
+      "examples": [
+        "553 5.1.3 Invalid address syntax",
+        "550 5.1.2 Host or domain name not found"
+      ]
+    },
+    "ip_blacklisted": {
+      "covers": "The sending IP address or its network is on a DNS blocklist or has poor reputation named as a listing (Spamhaus ZEN, SpamCop, Barracuda, a provider's own IP blocklist).",
+      "not_this": "A listed domain or URL is domain_blacklisted. Content judged as spam without mentioning the IP is spam_blocked.",
+      "examples": [
+        "554 5.7.1 Service unavailable; Client host [IP] blocked using zen.spamhaus.org",
+        "550 5.7.1 Your IP address is listed in our blocklist"
+      ]
+    },
+    "mailbox_disabled": {
+      "covers": "The mailbox exists or existed but is disabled, suspended, inactive, expired or closed.",
+      "not_this": "A mailbox that never existed or is unknown is user_unknown. A mailbox that is full is mailbox_full.",
+      "examples": [
+        "550 5.2.1 The email account that you tried to reach is disabled",
+        "550 Account has been suspended"
+      ]
+    },
+    "mailbox_full": {
+      "covers": "The recipient mailbox is over its storage quota or out of space.",
+      "not_this": "Limits on how many messages the sender may send are rate_limited.",
+      "examples": [
+        "452 4.2.2 The email account that you tried to reach is over quota",
+        "552 5.2.2 Mailbox full"
+      ]
+    },
+    "policy_blocked": {
+      "covers": "The receiver refused the message by local policy that is not about spam content, authentication, blocklists, geography or rate: administrative prohibition, sender or recipient not allowed, message too large, policy violation with no further reason.",
+      "not_this": "Content filters and spam scores are spam_blocked. Blocklist listings are ip_blacklisted or domain_blacklisted.",
+      "examples": [
+        "550 5.7.1 Administrative prohibition",
+        "552 5.3.4 Message size exceeds fixed limit"
+      ]
+    },
+    "rate_limited": {
+      "covers": "The sender exceeded a volume limit: too many messages, recipients or connections, sending too fast, throttling, or an unusual rate of mail.",
+      "not_this": "A plain try again later with no volume reason is greylisting. Rejection of mail because it looks like spam is spam_blocked, even if the text also mentions volume of unsolicited mail.",
+      "examples": [
+        "421 4.7.0 Too many connections from your IP",
+        "550 5.4.5 Daily sending quota exceeded"
+      ]
+    },
+    "relay_denied": {
+      "covers": "The server will not relay or accept mail for the recipient domain from this sender: relaying denied, not a local domain, authentication required to relay.",
+      "not_this": "SPF, DKIM or DMARC failures are auth_failure.",
+      "examples": [
+        "550 5.7.1 Relaying denied",
+        "554 5.7.1 EMAIL: Relay access denied"
+      ]
+    },
+    "server_error": {
+      "covers": "The receiving server or the connection failed: internal or temporary server errors, service unavailable, timeouts, connection resets, TLS or SSL handshake errors, DNS lookup failures on the receiving side.",
+      "not_this": "Deferrals whose stated reason is greylisting are greylisting; deferrals for sending volume are rate_limited.",
+      "examples": [
+        "451 4.3.0 Internal server error",
+        "error:1408F10B:SSL routines:ssl3_get_record:wrong version number"
+      ]
+    },
+    "spam_blocked": {
+      "covers": "The message was rejected because its content or the sender's behaviour was judged as spam or bulk mail by a content filter, spam score or reputation system, without naming a blocklist.",
+      "not_this": "A named IP blocklist is ip_blacklisted, a named domain or URL blocklist is domain_blacklisted, a stated volume limit is rate_limited.",
+      "examples": [
+        "550 5.7.1 Message rejected as spam by Content Filtering",
+        "554 5.7.1 This message has been blocked because its content presents a potential security issue"
+      ]
+    },
+    "unknown": {
+      "covers": "None of the other categories applies, or the text gives no reason at all.",
+      "not_this": "Do not use unknown when the text states a reason that fits another category, even vaguely.",
+      "examples": ["550 Error", "554 Transaction failed"]
+    },
+    "user_unknown": {
+      "covers": "The recipient mailbox does not exist on a domain that otherwise accepts mail: unknown user, no such user or mailbox, recipient not found, address rejected as unknown.",
+      "not_this": "A disabled or suspended mailbox is mailbox_disabled. A malformed address or a domain that cannot receive mail is invalid_address.",
+      "examples": [
+        "550 5.1.1 EMAIL: Recipient address rejected: User unknown",
+        "550 No such user here"
+      ]
+    },
+    "virus_detected": {
+      "covers": "The message was rejected because it contains a virus, malware, or a forbidden or dangerous attachment.",
+      "not_this": "Generic content filtering without malware or attachment reasons is spam_blocked.",
+      "examples": [
+        "554 5.7.1 Virus found in message",
+        "552 5.7.0 This message was blocked because its content presents a potential security issue: illegal attachment"
+      ]
+    }
+  },
+  "premise_questions": {
+    "ip_listed": "Does the bounce text say the sending IP address or network is listed on a blocklist?",
+    "domain_listed": "Does the bounce text say the sender's domain, or a domain or URL in the message, is listed on a blocklist?",
+    "volume_reason": "Does the bounce text give sending volume, message count, connection count or sending rate as the reason?",
+    "mailbox_exists": "Does the bounce text indicate that the recipient mailbox exists but cannot receive mail (full, disabled, suspended)?",
+    "temporary": "Does the bounce text say the failure is temporary and the sender should try again later?"
+  },
+  "mining_questions": {
+    "virus_detected": "Does the bounce text in `bounce_text` say the message was rejected because it contained a virus, malware, or a forbidden or dangerous attachment?",
+    "geo_blocked": "Does the bounce text in `bounce_text` say the message was rejected because of the sender's country, region or country-code domain?",
+    "domain_blacklisted": "Does the bounce text in `bounce_text` say the message was rejected because the sender's domain, or a domain or URL in the message, is listed on a blocklist?"
+  }
+}
