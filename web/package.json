@@ -11,23 +11,30 @@
     "format": "prettier --write ."
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=22.0.0"
   },
   "dependencies": {
-    "@postalsys/bounce-classifier": "^2.4.0",
-    "better-sqlite3": "^11.0.0",
-    "bootstrap": "^5.3.8",
-    "bootstrap-icons": "^1.13.1",
-    "connect-sqlite3": "^0.9.15",
-    "ejs": "^3.1.10",
-    "express": "^5.0.0",
-    "express-rate-limit": "^8.3.1",
-    "express-session": "^1.18.1",
-    "helmet": "^8.1.0",
-    "passport": "^0.7.0",
-    "passport-github2": "^0.1.12"
+    "@postalsys/bounce-classifier": "3.0.1",
+    "better-sqlite3": "13.0.3",
+    "bootstrap": "5.3.8",
+    "bootstrap-icons": "1.13.1",
+    "connect-sqlite3": "0.9.18",
+    "ejs": "6.0.1",
+    "express": "5.2.1",
+    "express-rate-limit": "8.7.0",
+    "express-session": "1.19.0",
+    "helmet": "8.3.0",
+    "passport": "0.7.0",
+    "passport-github2": "0.1.12"
   },
   "devDependencies": {
-    "prettier": "^3.7.0"
+    "prettier": "3.9.9"
+  },
+  "allowScripts": {
+    "sqlite3": true,
+    "better-sqlite3": false
+  },
+  "overrides": {
+    "sqlite3": "6.0.1"
   }
 }
