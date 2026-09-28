@@ -20,8 +20,17 @@ export const PATTERNS = [
   // Email addresses in angle brackets (including UTF-8 and special chars)
   [/<[^<>@\s]+@[^<>@\s]+\.[^<>\s]+>/g, "<EMAIL>"],
 
-  // Email addresses without brackets
-  [/(?<![:/])\b[^\s<>@:]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}\b/g, "EMAIL"],
+  // Email addresses without brackets. The address must start at a boundary
+  // (start, space, bracket, colon, =, ...) so "not found:jane.roe@x.com" is
+  // replaced whole instead of leaving "jane" behind.
+  [
+    /(?<![^\s<>@:()[\],;="'])[^\s<>@:()[\]/,;"']+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}\b/g,
+    "EMAIL",
+  ],
+
+  // Repairs text normalized before the boundary rule above, which could leave
+  // the start of a dotted local part glued on: "mail:jane.doeEMAIL" -> "mail:EMAIL"
+  [/(?<=[\s:(<[=])[A-Za-z0-9._+-]+EMAIL\b/g, "EMAIL"],
 
   // "user not found:email@domain" pattern (no space after colon)
   [/(not found|no longer on system):[^\s]+@[^\s]+/gi, "$1:EMAIL"],
@@ -186,6 +195,16 @@ export const PATTERNS = [
 
   // Domain names after "changed to @domain" or similar
   [/(@[a-z0-9\-]+\.)+[a-z]{2,}/gi, "@DOMAIN"],
+
+  // Address split by a space before its placeholder: "<jane.r EMAIL>", "<john @DOMAIN>".
+  // Bracketed addresses end up as <MSG_ID> through the generic bracket rule, so match that.
+  [/<[^<>]*\s(?:EMAIL|@DOMAIN)[^<>]*>/g, "<MSG_ID>"],
+
+  // Local part left in front of a replaced domain: "receiver:name@DOMAIN"
+  [/(?<![^\s<>@:()[\]])[^\s<>@:()[\]]+@DOMAIN\b/g, "EMAIL"],
+
+  // Address cut off by truncation at the end of the text: "... name@host.d"
+  [/(?<![^\s<>@:()[\]])[^\s<>@:()[\]]+@[a-zA-Z0-9.\-]+$/g, "EMAIL"],
 
   // Standalone domain patterns in specific contexts: "host domain.com said"
   [

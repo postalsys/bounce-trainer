@@ -1,0 +1,49 @@
+{
+  "description": "Shared cases for web/lib/anonymize.js and bounce-data scripts/normalize_bounces.py. Both test suites read this file so the two implementations stay identical. Use made-up addresses only.",
+  "cases": [
+    [
+      "550-5.7.1 first line\n550-second line\n550 third",
+      "550 5.7.1 first line second line third"
+    ],
+    [
+      "550 5.7.1 NOT allowed (receiver:jane.roe@DOMAIN.example).",
+      "550 5.7.1 NOT allowed (receiver:EMAIL)."
+    ],
+    [
+      "550 User doesnt exist: john.doe@example.c",
+      "550 User doesnt exist: EMAIL"
+    ],
+    [
+      "550 5.1.1 <jane.r EMAIL>: User unknown",
+      "550 5.1.1 <MSG_ID>: User unknown"
+    ],
+    [
+      "550 5.1.1 <john @DOMAIN>: User unknown",
+      "550 5.1.1 <MSG_ID>: User unknown"
+    ],
+    [
+      "553 <SRS0=1a2b=4Q=example.org=abc EMAIL example.net> is not valid",
+      "553 <MSG_ID> is not valid"
+    ],
+    [
+      "550 The @DOMAIN email domain has changed",
+      "550 The @DOMAIN email domain has changed"
+    ],
+    [
+      "552 5.2.2 <someone@example.com>: user is overquota",
+      "552 5.2.2 <MSG_ID>: user is overquota"
+    ],
+    ["550 5.1.1 user unknown", "550 5.1.1 user unknown"],
+    ["550 5.1.1 not found:jane.roe@example.com", "550 5.1.1 not found:EMAIL"],
+    [
+      "554 This user doesn't have an account (jane.roe@example.com)",
+      "554 This user doesn't have an account (EMAIL)"
+    ],
+    [
+      "550 see http://www.example.org/Why?s=mfrom;id=jane@example.com;ip=IP",
+      "550 see http://www.example.org/Why?s=mfrom;EMAIL;ip=IP"
+    ],
+    ["550 Email:janeEMAIL not found", "550 Email:EMAIL not found"],
+    ["554 XGEMAIL_0003 rejected", "554 XGEMAIL_0003 rejected"]
+  ]
+}
