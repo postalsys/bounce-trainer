@@ -10,10 +10,22 @@ import { reloadClassifier } from "./api.js";
 const router = Router();
 
 const VALID_LABELS = [
-  "auth_failure", "domain_blacklisted", "geo_blocked", "greylisting",
-  "invalid_address", "ip_blacklisted", "mailbox_disabled", "mailbox_full",
-  "policy_blocked", "rate_limited", "relay_denied", "server_error",
-  "spam_blocked", "unknown", "user_unknown", "virus_detected",
+  "auth_failure",
+  "domain_blacklisted",
+  "geo_blocked",
+  "greylisting",
+  "invalid_address",
+  "ip_blacklisted",
+  "mailbox_disabled",
+  "mailbox_full",
+  "policy_blocked",
+  "rate_limited",
+  "relay_denied",
+  "server_error",
+  "spam_blocked",
+  "unknown",
+  "user_unknown",
+  "virus_detected",
 ];
 
 // Track retrain status in memory
@@ -60,7 +72,9 @@ router.patch("/admin/api/proposals/:id", requireAdmin, (req, res) => {
   const { status, notes, label } = req.body;
 
   if (!["approved", "rejected"].includes(status)) {
-    return res.status(400).json({ error: "Status must be approved or rejected" });
+    return res
+      .status(400)
+      .json({ error: "Status must be approved or rejected" });
   }
 
   // Validate label if provided
@@ -110,7 +124,9 @@ router.post("/admin/api/proposals/bulk", requireAdmin, (req, res) => {
     return res.status(400).json({ error: "ids must be a non-empty array" });
   }
   if (!["approved", "rejected"].includes(status)) {
-    return res.status(400).json({ error: "Status must be approved or rejected" });
+    return res
+      .status(400)
+      .json({ error: "Status must be approved or rejected" });
   }
 
   const stmt = db.prepare(`
@@ -140,9 +156,15 @@ router.post("/admin/api/export", requireAdmin, (req, res) => {
     )
     .all();
 
-  const outputPath = resolve(config.projectRoot, "data", "community_labeled.jsonl");
+  const outputPath = resolve(
+    config.projectRoot,
+    "data",
+    "community_labeled.jsonl",
+  );
   const content = rows
-    .map((r) => JSON.stringify({ text: r.message_text, label: r.proposed_label }))
+    .map((r) =>
+      JSON.stringify({ text: r.message_text, label: r.proposed_label }),
+    )
     .join("\n");
 
   writeFileSync(outputPath, content ? content + "\n" : "");
@@ -152,7 +174,9 @@ router.post("/admin/api/export", requireAdmin, (req, res) => {
   const ids = rows.map((r) => r.id);
   if (ids.length > 0) {
     const markExported = db.transaction((ids) => {
-      const stmt = db.prepare(`UPDATE proposals SET exported_at = ? WHERE id = ?`);
+      const stmt = db.prepare(
+        `UPDATE proposals SET exported_at = ? WHERE id = ?`,
+      );
       for (const id of ids) stmt.run(now, id);
     });
     markExported(ids);
@@ -167,7 +191,11 @@ router.post("/admin/api/retrain", requireAdmin, (req, res) => {
     return res.status(409).json({ error: "Retrain already in progress" });
   }
 
-  retrainStatus = { running: true, lastLog: "", lastRun: new Date().toISOString() };
+  retrainStatus = {
+    running: true,
+    lastLog: "",
+    lastRun: new Date().toISOString(),
+  };
 
   const scriptPath = resolve(config.projectRoot, "pipeline", "retrain.sh");
 
@@ -224,9 +252,7 @@ router.get("/admin/api/retrain/status", requireAdmin, (req, res) => {
 // Stats
 router.get("/admin/api/stats", requireAdmin, (req, res) => {
   const counts = db
-    .prepare(
-      `SELECT status, COUNT(*) as count FROM proposals GROUP BY status`,
-    )
+    .prepare(`SELECT status, COUNT(*) as count FROM proposals GROUP BY status`)
     .all();
 
   const labelDist = db

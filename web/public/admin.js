@@ -18,7 +18,11 @@ const retrainStatusEl = document.getElementById("retrain-status");
 const adminModalEl = document.getElementById("admin-modal");
 const adminModal = new bootstrap.Modal(adminModalEl);
 
-function showModal(title, body, { type = "info", confirmText, onConfirm } = {}) {
+function showModal(
+  title,
+  body,
+  { type = "info", confirmText, onConfirm } = {},
+) {
   document.getElementById("admin-modal-title").textContent = title;
   document.getElementById("admin-modal-body").innerHTML = body;
 
@@ -27,10 +31,12 @@ function showModal(title, body, { type = "info", confirmText, onConfirm } = {}) 
     footer.innerHTML =
       `<button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>` +
       `<button type="button" class="btn btn-${type} btn-sm" id="admin-modal-confirm">${confirmText || "Confirm"}</button>`;
-    document.getElementById("admin-modal-confirm").addEventListener("click", () => {
-      adminModal.hide();
-      onConfirm();
-    });
+    document
+      .getElementById("admin-modal-confirm")
+      .addEventListener("click", () => {
+        adminModal.hide();
+        onConfirm();
+      });
   } else {
     footer.innerHTML = `<button type="button" class="btn btn-${type} btn-sm" data-bs-dismiss="modal">OK</button>`;
   }
@@ -86,14 +92,18 @@ async function loadProposals() {
       <td class="small">${p.model_confidence ? (p.model_confidence * 100).toFixed(0) + "%" : "-"}</td>
       <td class="small">${escapeHtml(p.github_username)}</td>
       <td>
-        ${currentStatus === "pending" ? `
+        ${
+          currentStatus === "pending"
+            ? `
           <div class="d-flex gap-1">
             <button class="btn btn-sm btn-success" onclick="patchProposal(${p.id}, 'approved')" title="Approve"><i class="bi bi-check-lg"></i></button>
             <button class="btn btn-sm btn-outline-danger" onclick="patchProposal(${p.id}, 'rejected')" title="Reject"><i class="bi bi-x-lg"></i></button>
           </div>
-        ` : currentStatus === "untrained"
-          ? '<span class="badge text-bg-warning">awaiting training</span>'
-          : `<span class="badge ${p.status === "approved" ? "text-bg-success" : "text-bg-danger"}">${escapeHtml(p.status)}</span>`}
+        `
+            : currentStatus === "untrained"
+              ? '<span class="badge text-bg-warning">awaiting training</span>'
+              : `<span class="badge ${p.status === "approved" ? "text-bg-success" : "text-bg-danger"}">${escapeHtml(p.status)}</span>`
+        }
       </td>
     </tr>
   `,
@@ -127,7 +137,9 @@ function truncate(str, len) {
 // Tab switching
 document.querySelectorAll(".nav-link[data-status]").forEach((tab) => {
   tab.addEventListener("click", () => {
-    document.querySelectorAll(".nav-link[data-status]").forEach((t) => t.classList.remove("active"));
+    document
+      .querySelectorAll(".nav-link[data-status]")
+      .forEach((t) => t.classList.remove("active"));
     tab.classList.add("active");
     currentStatus = tab.dataset.status;
     currentPage = 1;

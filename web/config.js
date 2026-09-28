@@ -25,7 +25,8 @@ try {
 
 const config = {
   port: parseInt(process.env.PORT || "3000", 10),
-  baseUrl: process.env.BASE_URL || `http://localhost:${process.env.PORT || 3000}`,
+  baseUrl:
+    process.env.BASE_URL || `http://localhost:${process.env.PORT || 3000}`,
 
   github: {
     clientId: process.env.GITHUB_CLIENT_ID || "",
@@ -35,7 +36,9 @@ const config = {
   sessionSecret: (() => {
     const s = process.env.SESSION_SECRET;
     if (!s || s === "change-me-to-random-string") {
-      console.error("FATAL: SESSION_SECRET must be set to a secure random value");
+      console.error(
+        "FATAL: SESSION_SECRET must be set to a secure random value",
+      );
       process.exit(1);
     }
     return s;
