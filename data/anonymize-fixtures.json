@@ -44,6 +44,10 @@
       "550 see http://www.example.org/Why?s=mfrom;EMAIL;ip=IP"
     ],
     ["550 Email:janeEMAIL not found", "550 Email:EMAIL not found"],
-    ["554 XGEMAIL_0003 rejected", "554 XGEMAIL_0003 rejected"]
+    ["554 XGEMAIL_0003 rejected", "554 XGEMAIL_0003 rejected"],
+    [
+      "550 5.1.1 <jane@example.ee>: Recipient address rejected: User unknown - jane doe@example.ee",
+      "550 5.1.1 <MSG_ID>: Recipient address rejected: User unknown - EMAIL"
+    ]
   ]
 }

@@ -32,6 +32,10 @@ export const PATTERNS = [
   // the start of a dotted local part glued on: "mail:jane.doeEMAIL" -> "mail:EMAIL"
   [/(?<=[\s:(<[=])[A-Za-z0-9._+-]+EMAIL\b/g, "EMAIL"],
 
+  // mail.ee and inbox.lv print the address as given, spaces included:
+  // "User unknown - jane doe@mail.ee" leaves "jane" in front of EMAIL
+  [/(User unknown - )[^\s<>@]+ EMAIL\b/g, "$1EMAIL"],
+
   // "user not found:email@domain" pattern (no space after colon)
   [/(not found|no longer on system):[^\s]+@[^\s]+/gi, "$1:EMAIL"],
 
